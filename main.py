@@ -7,8 +7,10 @@ def main():
 
     setup_handlers(application)
 
-    application.run_polling()
-    application.idle()
+    try:
+        application.run_polling()
+    except KeyboardInterrupt:
+        print("Бот остановлен пользователем.")
 
 if __name__ == '__main__':
     main()

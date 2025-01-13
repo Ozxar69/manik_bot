@@ -1,7 +1,7 @@
-
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import CommandHandler, MessageHandler, filters, CallbackQueryHandler
-from services.date_service import add_date
-from user_type import is_admin
+from services.date_service import add_date, get_filtered_records, book_date_in_file, get_available_dates
+from user_type import is_admin, get_buttons_for_user
 from buttons.buttons import get_admin_buttons, get_user_buttons, get_cancel_keyboard
 
 import pandas as pd
@@ -40,7 +40,7 @@ async def add_date_handler(update, context) -> None:
 
 async def cancel_handler(update, context) -> None:
     """Обрабатывает команду отмены."""
-    chat_id = update.callback_query.message.chat.id  # Используем callback_query
+    chat_id = update.callback_query.message.chat.id
 
     # Проверяем, есть ли состояние для данного пользователя
     if user_states.get(chat_id) is not None:
@@ -51,11 +51,7 @@ async def cancel_handler(update, context) -> None:
         await context.bot.send_message(chat_id=chat_id,
                                        text='Нет активной операции для отмены.')
 
-    # Определяем, администратор ли пользователь и выводим соответствующий блок кнопок
-    if is_admin(chat_id):  # Используем функцию для проверки
-        reply_markup = get_admin_buttons()  # Получаем администраторские кнопки
-    else:
-        reply_markup = get_user_buttons()  # Получаем пользовательские кнопки
+    reply_markup = get_buttons_for_user(chat_id)
 
     # Отправляем сообщение с кнопками
     await context.bot.send_message(chat_id=chat_id,
@@ -64,7 +60,7 @@ async def cancel_handler(update, context) -> None:
 
 async def handle_date_input(update, context) -> None:
     """Обрабатывает ввод даты и времени от пользователя."""
-    chat_id = update.message.chat.id  # Здесь все еще используем message, так как это текстовый ввод
+    chat_id = update.message.chat.id
 
     if user_states.get(chat_id) == 'adding_date':
         date_time = update.message.text
@@ -76,10 +72,12 @@ async def handle_date_input(update, context) -> None:
 
             if "Ошибка" in result_message:
                 await context.bot.send_message(chat_id=chat_id,
-                                               text=result_message)
+                                               text=result_message,
+                                   reply_markup=get_cancel_keyboard())
                 return
 
-            await context.bot.send_message(chat_id=chat_id, text=result_message)
+            await context.bot.send_message(chat_id=chat_id, text=result_message,
+                                   reply_markup=get_cancel_keyboard())
             user_states[chat_id] = None  # Сбрасываем состояние только при успешном добавлении
         except ValueError:
             await context.bot.send_message(chat_id=chat_id,
@@ -87,64 +85,95 @@ async def handle_date_input(update, context) -> None:
                                    reply_markup=get_cancel_keyboard())
             return
     else:
+        reply_markup = get_buttons_for_user(chat_id)
         await context.bot.send_message(chat_id=chat_id,
-                                       text='Выбери команду из списка, или нажми на нужную кнопку.',
-                                   reply_markup=get_cancel_keyboard())
+                                       text='Выбери команду из списка.',
+                                   reply_markup=reply_markup)
         return
 
 async def view_records(update, context) -> None:
     """Отправляет пользователю список записей, отсортированный по дате и времени."""
-    chat_id = update.callback_query.message.chat.id  # Используем callback_query
+    chat_id = update.callback_query.message.chat.id
+    reply_markup = get_buttons_for_user(chat_id)
 
-    # Проверяем, существует ли файл с записями
-    if not os.path.exists(DATA_FILE):
-        await context.bot.send_message(chat_id=chat_id, text='Записей нет.')
-        return
+    # Получаем отфильтрованные записи
+    sorted_records = get_filtered_records()
 
-    # Чтение записей из файла
-    try:
-        df = pd.read_csv(DATA_FILE)
+    # Формирование сообщения
+    if not sorted_records.empty:
+        message = "Твои ближайшие записи на месяц (ограничены 30):\n"
+        for index, row in sorted_records.iterrows():
+            record_message = f"📅 **Дата:**   {row['Дата'].strftime('%d.%m.%Y')}  ⏰ **Время:**   {row['Время']}"
 
-        # Сортировка записей по дате и времени
-        df['Дата'] = pd.to_datetime(df['Дата'] + ' ' + df['Время'], format='%d.%m.%Y %H:%M')
-        sorted_records = df.sort_values(by='Дата')
+            # Добавляем имя, если оно не "Неизвестно"
+            if row['Имя'] != "Неизвестно":
+                record_message += f"  👤 **Имя:**   {row['Имя']}"
 
-        # Формирование сообщения
-        if not sorted_records.empty:
-            message = "Твои близжайшие записи:\n"
-            for index, row in sorted_records.iterrows():
-                record_message = f"📅 **Дата:**   {row['Дата'].strftime('%d.%m.%Y')}  ⏰ **Время:**   {row['Время']}"
+            # Добавляем подтверждение, если оно равно 1
+            if row['Подтверждение'] == 1:
+                record_message += "  ✅   **Подтверждено**"
 
-                # Добавляем имя, если оно не "Неизвестно"
-                if row['Имя'] != "Неизвестно":
-                    record_message += f"  👤 **Имя:**   {row['Имя']}"
+            message += f"{record_message}\n"
+    else:
+        message = "Записей нет."
 
-                # Добавляем подтверждение, если оно равно 1
-                if row['Подтверждение'] == 1:
-                    record_message += "  ✅   **Подтверждено**"
+    await context.bot.send_message(chat_id=chat_id, text=message, reply_markup=reply_markup)
 
-                message += f"{record_message}\n"
-        else:
-            message = "Записей нет."
+async def view_free_records(update, context) -> None:
+    """Отправляет пользователю список свободных записей, отсортированный по дате и времени."""
+    chat_id = update.callback_query.message.chat.id
+    reply_markup = get_buttons_for_user(chat_id)
 
-        await context.bot.send_message(chat_id=chat_id, text=message)
+    # Получаем отфильтрованные записи
+    sorted_records = get_filtered_records()
 
-    except Exception as e:
-        await context.bot.send_message(chat_id=chat_id, text='Ошибка при чтении записей: {}'.format(str(e)),
+    # Фильтруем записи, где Подтверждено равно 0
+    free_records = sorted_records[sorted_records['Подтверждение'] == 0]
+
+    # Формирование сообщения
+    if not free_records.empty:
+        message = "Свободные записи:\n"
+        for index, row in free_records.iterrows():
+            record_message = f"📅 **Дата:**   {row['Дата'].strftime('%d.%m.%Y')}  ⏰ **Время:**   {row['Время']}"
+
+            message += f"{record_message}\n"
+    else:
+        message = "Свободных записей нет."
+
+    await context.bot.send_message(chat_id=chat_id, text=message, reply_markup=reply_markup)
+
+
+async def book_date(update, context) -> None:
+    """Запрашивает у пользователя выбор свободной даты."""
+    chat_id = update.callback_query.message.chat.id
+    available_dates = get_available_dates()  # Функция для получения доступных дат из файла
+
+    if not available_dates:
+        await context.bot.send_message(chat_id=chat_id,
+                                       text='Нет доступных дат для бронирования.',
                                        reply_markup=get_cancel_keyboard())
         return
 
-    # Определяем, администратор ли пользователь и выводим соответствующий блок кнопок
-    if is_admin(chat_id):  # Используем функцию для проверки
-        reply_markup = get_admin_buttons()  # Получаем администраторские кнопки
-    else:
-        reply_markup = get_user_buttons()  # Получаем пользовательские кнопки
+    # Создаем клавиатуру с доступными датами
+    keyboard = [[InlineKeyboardButton(date, callback_data=f'book_{date}')] for date in available_dates]
+    reply_markup = InlineKeyboardMarkup(keyboard)
 
-    # Отправляем сообщение с кнопками
     await context.bot.send_message(chat_id=chat_id,
-                                   text='Выберите действие:',
+                                   text='Пожалуйста, выберите доступную дату:',
                                    reply_markup=reply_markup)
 
+async def handle_booking(update, context) -> None:
+    """Обрабатывает выбор даты от пользователя."""
+    chat_id = update.callback_query.message.chat.id
+    selected_date = update.callback_query.data.split('_')[1]  # Извлекаем дату из callback_data
+    user_id = chat_id  # Или используйте другой способ получения ID пользователя
+    name = update.callback_query.from_user.username   # Имя по умолчанию
+
+    # Записываем данные в файл
+    result_message = book_date_in_file(selected_date, user_id, name)  # Функция для записи в файл
+
+    await context.bot.send_message(chat_id=chat_id, text=result_message,
+                                   reply_markup=get_cancel_keyboard())
 
 def setup_handlers(application) -> None:
     """Настраивает обработчики команд и сообщений для бота."""
@@ -152,17 +181,28 @@ def setup_handlers(application) -> None:
 
     # Обработчик для добавления свободной даты
     application.add_handler(
-        CallbackQueryHandler(add_date_handler, pattern='^add_date$'))  # Обработчик для добавления даты
+        CallbackQueryHandler(add_date_handler, pattern='^add_date$'))
 
     # Обработчик для просмотра записей
     application.add_handler(
-        CallbackQueryHandler(view_records, pattern='^view_records$'))  # Обработчик для просмотра записей
+        CallbackQueryHandler(view_records, pattern='^view_records$'))
 
     # Обработчик для отмены
     application.add_handler(
-        CallbackQueryHandler(cancel_handler, pattern='^cancel$'))  # Обработчик для отмены
+        CallbackQueryHandler(cancel_handler, pattern='^cancel$'))
+
+    # Обработчик для просмотра свободных записей
+    application.add_handler(
+        CallbackQueryHandler(view_free_records, pattern='^view_free_records$'))
+
+    # Обработчик для записи на свободную дату
+    application.add_handler(
+        CallbackQueryHandler(book_date, pattern='^book_date$'))
+    application.add_handler(
+        CallbackQueryHandler(handle_booking, pattern='^book_'))
 
     # Обработчик текстовых сообщений для ввода даты
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND,
-                       handle_date_input))  # Обработчик текстовых сообщений
+                       handle_date_input))
+

@@ -11,8 +11,8 @@ def get_admin_buttons():
 def get_user_buttons():
     """Создает пользовательские кнопки."""
     buttons = [
-        [InlineKeyboardButton("👀 Посмотреть свободные записи", callback_data='view_free_records'),
-         InlineKeyboardButton("✍️ Записаться на свободную дату", callback_data='book_date')]
+        [InlineKeyboardButton("👀 Посмотреть свободные даты", callback_data='view_free_records'),
+         InlineKeyboardButton("✍️ Записаться", callback_data='book_date')]
     ]
     return InlineKeyboardMarkup(buttons)
 

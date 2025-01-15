@@ -422,11 +422,6 @@ def setup_handlers(application) -> None:
         CallbackQueryHandler(view_personal_records, pattern="my_records")
     )
 
-    # Обработчик текстовых сообщений для ввода даты
-    application.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_date_input)
-    )
-
     application.add_handler(
         CallbackQueryHandler(cancel_record, pattern="^cancel_record$")
     )
@@ -434,3 +429,9 @@ def setup_handlers(application) -> None:
     application.add_handler(
         CallbackQueryHandler(confirm_cancel_record, pattern=r"^confirm_cancel_")
     )
+
+    # Обработчик текстовых сообщений для ввода даты
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_date_input)
+    )
+

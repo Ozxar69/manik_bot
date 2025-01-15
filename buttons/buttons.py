@@ -38,3 +38,20 @@ def get_cancel_keyboard():
     """Создает клавиатуру с кнопкой отмены."""
     buttons = [[InlineKeyboardButton("❌ Отмена", callback_data="cancel")]]
     return InlineKeyboardMarkup(buttons)
+
+def get_type_buttons():
+    """Создает кнопки для выбора типа услуг."""
+    buttons = [
+        [
+            InlineKeyboardButton(
+                "💅 Маникюр", callback_data="service_manicure"
+            ),
+            InlineKeyboardButton(
+                "🦶 Педикюр", callback_data="service_pedicure"
+            ),
+            InlineKeyboardButton(
+                "🌟 Брови", callback_data="service_brows"
+            ),
+        ]
+    ]
+    return InlineKeyboardMarkup(buttons)

@@ -6,11 +6,11 @@ from datetime import datetime, timedelta
 DATA_FILE = "dates.csv"
 
 
-def add_date(date_str, time_str, name="Неизвестно"):
+def add_date(date_str, time_str, name="", confirmation=None, ):  # Добавляем параметр confirmation
     # Проверяем, существует ли файл, и создаем его, если нет
     if not os.path.exists(DATA_FILE):
         df = pd.DataFrame(
-            columns=["Дата", "Время", "Имя", "id", "Подтверждение"]
+            columns=["Дата", "Время", "Имя", "id", "Подтверждение", "Тип"]
         )
         df.to_csv(DATA_FILE, index=False)
 
@@ -41,8 +41,8 @@ def add_date(date_str, time_str, name="Неизвестно"):
         {
             "Дата": [date_with_year],
             "Время": [time_str],
-            "Имя": [name],
-            "Подтверждение": [0],
+            "Имя": [name],  # Имя может быть None
+            "Подтверждение": [confirmation],  # Подтверждение может быть None
         }
     )
     df = pd.concat([df, new_entry], ignore_index=True)
@@ -79,17 +79,24 @@ def get_available_dates():
     df = pd.read_csv(DATA_FILE)
 
     # Фильтруем записи, где подтверждение равно 0 (не подтверждено)
-    available_dates = df[df["Подтверждение"] == 0]
+    available_dates = df[df["Подтверждение"].isnull()]
 
     # Получаем текущее время
     current_time = datetime.now()  # Используем текущее время
 
-    # Формируем список доступных дат в формате "Дата Время", проверяя актуальность
+    # Создаем новый DataFrame с актуальными датами и временем
+    available_dates = available_dates[available_dates['Дата'] + ' ' + available_dates['Время'] > current_time.strftime("%d.%m.%Y %H:%M")]
+
+    # Преобразуем даты и время в формат datetime для сортировки
+    available_dates['Дата Время'] = pd.to_datetime(available_dates['Дата'] + ' ' + available_dates['Время'], format="%d.%m.%Y %H:%M")
+
+    # Сортируем по дате и времени
+    available_dates = available_dates.sort_values(by='Дата Время')
+
+    # Возвращаем список доступных дат в нужном формате
     return [
         f"{row['Дата']} {row['Время']}"
         for index, row in available_dates.iterrows()
-        if datetime.strptime(f"{row['Дата']} {row['Время']}", "%d.%m.%Y %H:%M")
-        > current_time
     ]
 
 
@@ -116,7 +123,7 @@ def book_date_in_file(selected_date, user_id, name):
 
     # Сохраняем изменения в файл
     df.to_csv(DATA_FILE, index=False)
-    return "Бронирование успешно выполнено!"
+    return
 
 
 def get_user_records(user_id):
@@ -147,7 +154,7 @@ def update_record(user_id, date, time):
     df = pd.read_csv(DATA_FILE)
 
     # Обновляем записи, где ID пользователя совпадает
-    df.loc[(df['id'] == user_id) & (df['Дата'] == date) & (df['Время'] == time), ['id', 'Имя', 'Подтверждение']] = [None, "Неизвестно", 0]
+    df.loc[(df['id'] == user_id) & (df['Дата'] == date) & (df['Время'] == time), ['id', 'Имя', 'Подтверждение']] = [None, None, None]
 
     # Сохраняем изменения обратно в CSV
     df.to_csv(DATA_FILE, index=False)

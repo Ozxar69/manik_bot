@@ -117,3 +117,37 @@ def book_date_in_file(selected_date, user_id, name):
     # Сохраняем изменения в файл
     df.to_csv(DATA_FILE, index=False)
     return "Бронирование успешно выполнено!"
+
+
+def get_user_records(user_id):
+    """Получает записи пользователя по его ID, исключая прошедшие записи."""
+    df = pd.read_csv(DATA_FILE)  # Загружаем данные из CSV файла
+    user_records = df[df['id'] == user_id]  # Фильтруем записи по ID пользователя
+
+    if user_records.empty:
+        return None  # Если записей нет, возвращаем None
+
+    # Получаем текущее время
+    now = datetime.now()
+
+    # Фильтруем записи, исключая те, которые уже прошли
+    user_records = user_records[
+        (pd.to_datetime(user_records['Дата'] + ' ' + user_records['Время'], dayfirst=True)) > now
+    ]
+
+    if user_records.empty:
+        return None  # Если после фильтрации записей нет, возвращаем None
+
+    # Возвращаем только даты и время в виде списка кортежей
+    return list(zip(user_records['Дата'], user_records['Время']))
+
+
+def update_record(user_id, date, time):
+    """Обновляет запись пользователя в CSV файле."""
+    df = pd.read_csv(DATA_FILE)
+
+    # Обновляем записи, где ID пользователя совпадает
+    df.loc[(df['id'] == user_id) & (df['Дата'] == date) & (df['Время'] == time), ['id', 'Имя', 'Подтверждение']] = [None, "Неизвестно", 0]
+
+    # Сохраняем изменения обратно в CSV
+    df.to_csv(DATA_FILE, index=False)

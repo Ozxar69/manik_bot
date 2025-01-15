@@ -10,6 +10,8 @@ from services.date_service import (
     get_filtered_records,
     book_date_in_file,
     get_available_dates,
+    get_user_records,
+    update_record,
 )
 from user_type import is_admin, get_buttons_for_user, ADMIN_IDS
 from buttons.buttons import (
@@ -262,6 +264,7 @@ async def handle_booking(update, context) -> None:
 
 
 async def confirm_booking(update, context) -> None:
+    """"""
     query = update.callback_query
     await query.answer()  # Это важно для подтверждения нажатия кнопки
 
@@ -306,6 +309,74 @@ async def deny_booking(update, context) -> None:
     )
 
 
+async def view_personal_records(update, context) -> None:
+    """Обрабатывает запрос пользователя на просмотр своих записей."""
+    user_id = update.callback_query.from_user.id  # Получаем ID пользователя
+    records = get_user_records(user_id)  # Получаем записи пользователя
+    reply_markup = get_buttons_for_user(user_id)
+
+    if records is None:
+        await context.bot.send_message(
+            chat_id=update.callback_query.message.chat.id,
+            text="У вас нет записей."
+        )
+        return
+
+    # Формируем сообщения на основе полученных записей
+    messages = [f"Вы записаны на прием {date} в {time}." for date, time in records]
+
+    # Отправляем сообщения пользователю
+    await context.bot.send_message(
+        chat_id=update.callback_query.message.chat.id,
+        text="\n".join(messages),
+        reply_markup=reply_markup  # Здесь можно оставить кнопку для отмены записи
+    )
+
+async def cancel_record(update, context) -> None:
+    """Отменяет запись пользователя."""
+    user_id = update.callback_query.from_user.id
+    records = get_user_records(user_id)  # Получаем записи пользователя
+
+    if records is None:
+        await context.bot.send_message(
+            chat_id=update.callback_query.message.chat.id,
+            text="У вас нет записей для отмены."
+        )
+        return
+
+    # Создаем кнопки для каждой записи
+    buttons = [
+        InlineKeyboardButton(f"❌ Отменить {date} в {time}", callback_data=f"confirm_cancel_{date}_{time}")
+        for date, time in records
+    ]
+    reply_markup = InlineKeyboardMarkup([[button] for button in buttons])
+
+    await context.bot.send_message(
+        chat_id=update.callback_query.message.chat.id,
+        text="Выберите запись для отмены:",
+        reply_markup=reply_markup
+    )
+
+async def confirm_cancel_record(update, context) -> None:
+    """Подтверждает отмену записи."""
+    user_id = update.callback_query.from_user.id
+    name = update.callback_query.from_user.name
+    data = update.callback_query.data.split("_")
+    date = data[2]
+    time = data[3]
+
+    # Обновляем запись в CSV
+    update_record(user_id, date, time)
+
+    await update.callback_query.answer()
+    reply_markup = get_user_buttons()
+    await context.bot.send_message(
+        chat_id=update.callback_query.message.chat.id,
+        text=f"Запись на {date} в {time} отменена.",
+        reply_markup=reply_markup
+    )
+    await context.bot.send_message(chat_id=ADMIN_IDS[0], text=f'Клиент {name}, отменил запись на {date} в {time}.')
+
 def setup_handlers(application) -> None:
     """Настраивает обработчики команд и сообщений для бота."""
     application.add_handler(
@@ -322,7 +393,7 @@ def setup_handlers(application) -> None:
         CallbackQueryHandler(view_records, pattern="^view_records$")
     )
 
-    # Обработчик для отмены
+    # Обработчик для отмены кнопки отмены
     application.add_handler(
         CallbackQueryHandler(cancel_handler, pattern="^cancel$")
     )
@@ -347,8 +418,20 @@ def setup_handlers(application) -> None:
     application.add_handler(
         CallbackQueryHandler(deny_booking, pattern="^deny\\|")
     )
+    # Обработчик для просмотра своих записей
+    application.add_handler(
+        CallbackQueryHandler(view_personal_records, pattern="my_records")
+    )
 
     # Обработчик текстовых сообщений для ввода даты
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_date_input)
+    )
+
+    application.add_handler(
+        CallbackQueryHandler(cancel_record, pattern="^cancel_record$")
+    )
+    # Добавление обработчика для подтверждения отмены записи
+    application.add_handler(
+        CallbackQueryHandler(confirm_cancel_record, pattern=r"^confirm_cancel_")
     )

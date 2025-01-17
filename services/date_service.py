@@ -1,7 +1,7 @@
-import pandas as pd
 import os
 from datetime import datetime, timedelta
 
+import pandas as pd
 
 DATA_FILE = "dates.csv"
 
@@ -176,7 +176,9 @@ def update_record(user_id, date, time):
     df = pd.read_csv(DATA_FILE)
 
     # Проверяем, существует ли запись
-    record_exists = df[(df["id"] == user_id) & (df["Дата"] == date) & (df["Время"] == time)]
+    record_exists = df[
+        (df["id"] == user_id) & (df["Дата"] == date) & (df["Время"] == time)
+    ]
     if record_exists.empty:
         return False  # Запись не найдена
 
@@ -196,8 +198,8 @@ def get_upcoming_records():
     df = pd.read_csv(DATA_FILE)
 
     # Преобразуем столбцы "Дата" и "Время" в нужные форматы
-    df["Дата"] = pd.to_datetime(df["Дата"], format='%d.%m.%Y', dayfirst=True)
-    df["Время"] = pd.to_datetime(df["Время"], format='%H:%M').dt.time
+    df["Дата"] = pd.to_datetime(df["Дата"], format="%d.%m.%Y", dayfirst=True)
+    df["Время"] = pd.to_datetime(df["Время"], format="%H:%M").dt.time
 
     # Получаем текущую дату и время
     now = datetime.now()
@@ -213,16 +215,14 @@ def get_upcoming_records():
         # Проверяем, что дата не прошла и запись подтверждена
         if record_date.date() >= now.date() and row["Подтверждение"] == 1:
             # Форматируем дату и время
-            formatted_date = record_date.strftime('%d.%m.%Y')
-            formatted_time = record_time.strftime(
-                '%H:%M')
+            formatted_date = record_date.strftime("%d.%m.%Y")
+            formatted_time = record_time.strftime("%H:%M")
 
             # Добавляем отформатированные данные в список
             upcoming_records.append(
-                (formatted_date, formatted_time, name, service_type, int(id)))
+                (formatted_date, formatted_time, name, service_type, int(id))
+            )
 
     # Сортируем список по дате
-    upcoming_records.sort(
-        key=lambda x: datetime.strptime(x[0], '%d.%m.%Y')
-    )
+    upcoming_records.sort(key=lambda x: datetime.strptime(x[0], "%d.%m.%Y"))
     return upcoming_records

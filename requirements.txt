@@ -7,6 +7,7 @@ h11==0.14.0
 httpcore==1.0.7
 httpx==0.28.1
 idna==3.10
+isort==5.13.2
 mypy-extensions==1.0.0
 numpy==2.2.1
 packaging==24.2
@@ -14,6 +15,7 @@ pandas==2.2.3
 pathspec==0.12.1
 platformdirs==4.3.6
 python-dateutil==2.9.0.post0
+python-dotenv==1.0.1
 python-telegram-bot==21.10
 pytz==2024.2
 setuptools==69.1.0

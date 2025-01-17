@@ -1,6 +1,12 @@
+import os
+
+from dotenv import load_dotenv
+
 from buttons.buttons import get_admin_buttons, get_user_buttons
 
-ADMIN_IDS = [792230644]  # Список ID администраторов
+load_dotenv()
+ADMIN_IDS = os.getenv("ADMIN_IDS").split(",")
+ADMIN_IDS = list(map(int, ADMIN_IDS))
 
 
 def is_admin(user_id):

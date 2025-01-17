@@ -1,13 +1,17 @@
+import os
+
+from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder
+
 from handlers.bot_handlers import setup_handlers
 
 
 def main():
-    application = (
-        ApplicationBuilder()
-        .token("5727798773:AAHZXJfbg054rdwf4mux5OeCyXj0weoBqpI")
-        .build()
-    )
+    load_dotenv()
+
+    token = os.getenv("TELEGRAM_BOT_TOKEN")
+
+    application = ApplicationBuilder().token(token).build()
 
     setup_handlers(application)
 

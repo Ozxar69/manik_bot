@@ -16,7 +16,7 @@ def get_admin_buttons():
             InlineKeyboardButton(
                 "👀 Посмотреть записи", callback_data="view_records"
             ),
-        ]
+        ],
     ]
     return InlineKeyboardMarkup(buttons)
 
@@ -38,7 +38,7 @@ def get_user_buttons():
         ],
         [
             InlineKeyboardButton("✍️ Записаться", callback_data="book_date"),
-        ]
+        ],
     ]
     return InlineKeyboardMarkup(buttons)
 
@@ -63,5 +63,3 @@ def get_type_buttons():
         ]
     ]
     return InlineKeyboardMarkup(buttons)
-
-

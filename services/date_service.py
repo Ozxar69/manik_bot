@@ -45,8 +45,8 @@ def add_date(
         {
             "Дата": [date_with_year],
             "Время": [time_str],
-            "Имя": [name],  # Имя может быть None
-            "Подтверждение": [confirmation],  # Подтверждение может быть None
+            "Имя": [name],
+            "Подтверждение": [confirmation],
             "Тип": [type],
         }
     )

@@ -29,7 +29,6 @@ def get_user_buttons():
                 "👀 Посмотреть свободные даты",
                 callback_data="view_free_records",
             ),
-            InlineKeyboardButton("✍️ Записаться", callback_data="book_date"),
         ],
         [
             InlineKeyboardButton("📜Мои записи", callback_data="my_records"),
@@ -37,6 +36,9 @@ def get_user_buttons():
                 "❌ Отменить запись", callback_data="cancel_record"
             ),
         ],
+        [
+            InlineKeyboardButton("✍️ Записаться", callback_data="book_date"),
+        ]
     ]
     return InlineKeyboardMarkup(buttons)
 

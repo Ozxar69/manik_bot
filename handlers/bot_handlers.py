@@ -155,13 +155,13 @@ async def view_records(update, context) -> None:
 
             # Добавляем имя, если оно не "Неизвестно"
             if row["Имя"] is not None and not pd.isna(row["Имя"]):
-                record_message += f"👤  {row['Имя']}    "
+                record_message += f"👤  {row['Имя']:<22}"
             if row["Тип"] is not None and not pd.isna(row["Тип"]):
                 record_message += f"🌟  {row['Тип']}\n"
 
             # Добавляем подтверждение, если оно равно 1
             if row["Подтверждение"] == 1:
-                record_message += "✅ Подтверждено\n"
+                record_message += f"{'✅ Подтверждено':>30}\n"
 
 
             message += f"{record_message}\n"
@@ -365,7 +365,7 @@ async def view_personal_records(update, context) -> None:
 
     # Формируем сообщения на основе полученных записей
     messages = [
-        f"Вы записаны на прием {date} в {time}." for date, time, _ in records
+        f"Вы записаны на {type} - {date} в {time}." for date, time, type in records
     ]
 
     # Отправляем сообщения пользователю
@@ -391,10 +391,10 @@ async def cancel_record(update, context) -> None:
     # Создаем кнопки для каждой записи
     buttons = [
         InlineKeyboardButton(
-            f"❌ Отменить {date} в {time}",
+            f"❌ {type} {date} в {time}",
             callback_data=f"confirm_cancel_{date}_{time}",
         )
-        for date, time, _ in records
+        for date, time, type in records
     ]
     reply_markup = InlineKeyboardMarkup([[button] for button in buttons])
 
@@ -418,6 +418,7 @@ async def confirm_cancel_record(update, context) -> None:
 
     await update.callback_query.answer()
     reply_markup = get_user_buttons()
+    await update.callback_query.edit_message_reply_markup(reply_markup=None)
     await context.bot.send_message(
         chat_id=update.callback_query.message.chat.id,
         text=f"Запись на {date} в {time} отменена.",
@@ -425,7 +426,7 @@ async def confirm_cancel_record(update, context) -> None:
     )
     await context.bot.send_message(
         chat_id=ADMIN_IDS[0],
-        text=f"Клиент {name}, отменил запись на {date} в {time}.",
+        text=f"Клиент {name} отменил запись на {date} в {time}.",
     )
 
 

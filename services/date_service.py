@@ -6,7 +6,9 @@ from datetime import datetime, timedelta
 DATA_FILE = "dates.csv"
 
 
-def add_date(date_str, time_str, name="", confirmation=None, ):  # Добавляем параметр confirmation
+def add_date(
+    date_str, time_str, name="", confirmation=None, type=""
+):  # Добавляем параметр confirmation
     # Проверяем, существует ли файл, и создаем его, если нет
     if not os.path.exists(DATA_FILE):
         df = pd.DataFrame(
@@ -16,6 +18,8 @@ def add_date(date_str, time_str, name="", confirmation=None, ):  # Добавл�
 
     # Загружаем существующие данные
     df = pd.read_csv(DATA_FILE)
+    df["Имя"] = df["Имя"].astype(str)
+    df["Тип"] = df["Тип"].astype(str)
 
     # Получаем текущий год
     current_year = datetime.now().year
@@ -43,6 +47,7 @@ def add_date(date_str, time_str, name="", confirmation=None, ):  # Добавл�
             "Время": [time_str],
             "Имя": [name],  # Имя может быть None
             "Подтверждение": [confirmation],  # Подтверждение может быть None
+            "Тип": [type],
         }
     )
     df = pd.concat([df, new_entry], ignore_index=True)
@@ -85,13 +90,19 @@ def get_available_dates():
     current_time = datetime.now()  # Используем текущее время
 
     # Создаем новый DataFrame с актуальными датами и временем
-    available_dates = available_dates[available_dates['Дата'] + ' ' + available_dates['Время'] > current_time.strftime("%d.%m.%Y %H:%M")]
+    available_dates = available_dates[
+        available_dates["Дата"] + " " + available_dates["Время"]
+        > current_time.strftime("%d.%m.%Y %H:%M")
+    ]
 
     # Преобразуем даты и время в формат datetime для сортировки
-    available_dates['Дата Время'] = pd.to_datetime(available_dates['Дата'] + ' ' + available_dates['Время'], format="%d.%m.%Y %H:%M")
+    available_dates["Дата Время"] = pd.to_datetime(
+        available_dates["Дата"] + " " + available_dates["Время"],
+        format="%d.%m.%Y %H:%M",
+    )
 
     # Сортируем по дате и времени
-    available_dates = available_dates.sort_values(by='Дата Время')
+    available_dates = available_dates.sort_values(by="Дата Время")
 
     # Возвращаем список доступных дат в нужном формате
     return [
@@ -100,7 +111,7 @@ def get_available_dates():
     ]
 
 
-def book_date_in_file(selected_date, user_id, name):
+def book_date_in_file(selected_date, user_id, name, service_type):
     """Записывает информацию о бронировании в файл."""
     if not os.path.exists(DATA_FILE):
         return "Ошибка: файл с датами не найден."
@@ -120,6 +131,7 @@ def book_date_in_file(selected_date, user_id, name):
     df.at[index[0], "Имя"] = "@" + name
     df.at[index[0], "id"] = int(user_id)
     df.at[index[0], "Подтверждение"] = 1
+    df.at[index[0], "Тип"] = service_type  # Записываем тип услуги
 
     # Сохраняем изменения в файл
     df.to_csv(DATA_FILE, index=False)
@@ -129,7 +141,9 @@ def book_date_in_file(selected_date, user_id, name):
 def get_user_records(user_id):
     """Получает записи пользователя по его ID, исключая прошедшие записи."""
     df = pd.read_csv(DATA_FILE)  # Загружаем данные из CSV файла
-    user_records = df[df['id'] == user_id]  # Фильтруем записи по ID пользователя
+    user_records = df[
+        df["id"] == user_id
+    ]  # Фильтруем записи по ID пользователя
 
     if user_records.empty:
         return None  # Если записей нет, возвращаем None
@@ -139,22 +153,76 @@ def get_user_records(user_id):
 
     # Фильтруем записи, исключая те, которые уже прошли
     user_records = user_records[
-        (pd.to_datetime(user_records['Дата'] + ' ' + user_records['Время'], dayfirst=True)) > now
+        (
+            pd.to_datetime(
+                user_records["Дата"] + " " + user_records["Время"],
+                dayfirst=True,
+            )
+        )
+        > now
     ]
 
     if user_records.empty:
         return None  # Если после фильтрации записей нет, возвращаем None
 
     # Возвращаем только даты и время в виде списка кортежей
-    return list(zip(user_records['Дата'], user_records['Время']))
+    return list(
+        zip(user_records["Дата"], user_records["Время"], user_records["Тип"])
+    )
 
 
 def update_record(user_id, date, time):
     """Обновляет запись пользователя в CSV файле."""
     df = pd.read_csv(DATA_FILE)
 
+    # Проверяем, существует ли запись
+    record_exists = df[(df["id"] == user_id) & (df["Дата"] == date) & (df["Время"] == time)]
+    if record_exists.empty:
+        return False  # Запись не найдена
+
     # Обновляем записи, где ID пользователя совпадает
-    df.loc[(df['id'] == user_id) & (df['Дата'] == date) & (df['Время'] == time), ['id', 'Имя', 'Подтверждение']] = [None, None, None]
+    df.loc[
+        (df["id"] == user_id) & (df["Дата"] == date) & (df["Время"] == time),
+        ["id", "Имя", "Подтверждение", "Тип"],
+    ] = [None, "", None, ""]
 
     # Сохраняем изменения обратно в CSV
     df.to_csv(DATA_FILE, index=False)
+    return True  # Запись успешно обновлена
+
+
+def get_upcoming_records():
+    """Возвращает список предстоящих записей."""
+    df = pd.read_csv(DATA_FILE)
+
+    # Преобразуем столбцы "Дата" и "Время" в нужные форматы
+    df["Дата"] = pd.to_datetime(df["Дата"], format='%d.%m.%Y', dayfirst=True)
+    df["Время"] = pd.to_datetime(df["Время"], format='%H:%M').dt.time
+
+    # Получаем текущую дату и время
+    now = datetime.now()
+    upcoming_records = []
+
+    for index, row in df.iterrows():
+        record_date = row["Дата"]
+        record_time = row["Время"]
+        name = row["Имя"]
+        service_type = row["Тип"]
+        id = row["id"]
+
+        # Проверяем, что дата не прошла и запись подтверждена
+        if record_date.date() >= now.date() and row["Подтверждение"] == 1:
+            # Форматируем дату и время
+            formatted_date = record_date.strftime('%d.%m.%Y')
+            formatted_time = record_time.strftime(
+                '%H:%M')
+
+            # Добавляем отформатированные данные в список
+            upcoming_records.append(
+                (formatted_date, formatted_time, name, service_type, int(id)))
+
+    # Сортируем список по дате
+    upcoming_records.sort(
+        key=lambda x: datetime.strptime(x[0], '%d.%m.%Y')
+    )
+    return upcoming_records

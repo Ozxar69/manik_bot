@@ -1,9 +1,10 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
 from telegram.ext import (
     CommandHandler,
     MessageHandler,
     filters,
     CallbackQueryHandler,
+CallbackContext
 )
 from services.date_service import (
     add_date,
@@ -12,18 +13,21 @@ from services.date_service import (
     get_available_dates,
     get_user_records,
     update_record,
+get_upcoming_records
 )
 from user_type import is_admin, get_buttons_for_user, ADMIN_IDS
 from buttons.buttons import (
     get_admin_buttons,
     get_user_buttons,
     get_cancel_keyboard,
+    get_type_buttons,
 )
 import pandas as pd
 
 DATA_FILE = "dates.csv"
 # Словарь для хранения состояний пользователей
 user_states = {}
+SERVICE_NAMES = {"manicure": "Маникюр", "pedicure": "Педикюр", "brows": "Брови"}
 
 
 async def wake_up(update, context) -> None:
@@ -95,8 +99,12 @@ async def handle_date_input(update, context) -> None:
         date_time = update.message.text
 
         try:
-            date_str, time_str = date_time.split()  # Разделяем ввод на дату и время
-            result_message = add_date(date_str, time_str)  # Используем функцию для добавления даты
+            date_str, time_str = (
+                date_time.split()
+            )  # Разделяем ввод на дату и время
+            result_message = add_date(
+                date_str, time_str
+            )  # Используем функцию для добавления даты
 
             if "Ошибка" in result_message:
                 await context.bot.send_message(
@@ -111,7 +119,9 @@ async def handle_date_input(update, context) -> None:
                 text=result_message,
                 reply_markup=get_cancel_keyboard(),
             )
-            user_states[chat_id] = None  # Сбрасываем состояние только при успешном добавлении
+            user_states[chat_id] = (
+                None  # Сбрасываем состояние только при успешном добавлении
+            )
         except ValueError:
             await context.bot.send_message(
                 chat_id=chat_id,
@@ -141,15 +151,18 @@ async def view_records(update, context) -> None:
     if not sorted_records.empty:
         message = "Твои ближайшие записи на месяц (ограничены 30):\n"
         for index, row in sorted_records.iterrows():
-            record_message = f"📅  {row['Дата'].strftime('%d.%m.%Y')}  📅     ⏰ {row['Время']}  ⏰\n"
+            record_message = f"📅  {row['Дата'].strftime('%d.%m.%Y')}  📅    ⏰  {row['Время']}  ⏰\n"
 
             # Добавляем имя, если оно не "Неизвестно"
             if row["Имя"] is not None and not pd.isna(row["Имя"]):
-                record_message += f"  👤  {row['Имя']}"
+                record_message += f"👤  {row['Имя']}    "
+            if row["Тип"] is not None and not pd.isna(row["Тип"]):
+                record_message += f"🌟  {row['Тип']}\n"
 
             # Добавляем подтверждение, если оно равно 1
             if row["Подтверждение"] == 1:
-                record_message += "  ✅ Подтверждено\n"
+                record_message += "✅ Подтверждено\n"
+
 
             message += f"{record_message}\n"
     else:
@@ -191,9 +204,7 @@ async def book_date(update, context) -> None:
     """Запрашивает у пользователя выбор свободной даты."""
     chat_id = update.callback_query.message.chat.id
     available_dates = get_available_dates()
-    reply_markup = get_buttons_for_user(
-        chat_id
-    )
+    reply_markup = get_buttons_for_user(chat_id)
 
     if not available_dates:
         await context.bot.send_message(
@@ -226,12 +237,45 @@ async def handle_booking(update, context) -> None:
     user_id = chat_id  # ID пользователя
     name = update.callback_query.from_user.username  # Получаем имя пользователя
 
+    # Отправляем пользователю кнопки для выбора услуги
+    date_message = await context.bot.send_message(
+        chat_id=chat_id,
+        text=f"Вы выбрали дату: {selected_date}. Пожалуйста, выберите услугу:",
+        reply_markup=get_type_buttons(),  # Отправляем кнопки выбора услуг
+    )
+
+    # Сохраняем информацию о дате в user_data для дальнейшего использования
+    context.user_data["selected_date"] = selected_date
+
+
+async def handle_service_choice(update, context):
+    """Обработчик выбора типа услуги."""
+    query = update.callback_query
+    await query.answer()  # Это важно для подтверждения нажатия кнопки
+
+    # Получаем выбранную услугу из callback_data
+    chosen_service = query.data.split("_")[1]
+
+    # Извлекаем дату из user_data
+    selected_date = context.user_data.get("selected_date")
+    if not selected_date:
+        await query.message.reply_text(
+            "Ошибка: не удалось получить информацию о дате."
+        )
+        return
+
+    user_id = query.from_user.id
+
+    # Получаем читаемое название услуги
+    service_name = SERVICE_NAMES.get(chosen_service, "Неизвестная услуга")
+
     # Отправляем сообщение администратору
     admin_id = ADMIN_IDS[0]  # Берем первого администратора из списка
     keyboard = [
         [
             InlineKeyboardButton(
-                "Да", callback_data=f"confirm|{selected_date}|{user_id}|{name}"
+                "Да",
+                callback_data=f"confirm|{selected_date}|{user_id}|{query.from_user.username}|{service_name}",
             ),
             InlineKeyboardButton("Нет", callback_data=f"deny|{user_id}"),
         ]
@@ -240,19 +284,19 @@ async def handle_booking(update, context) -> None:
 
     await context.bot.send_message(
         chat_id=admin_id,
-        text=f"Пользователь @{name} хочет записаться на дату {selected_date}. Подтвердите запись?",
+        text=f"Пользователь @{query.from_user.username} хочет записаться на услугу {service_name} на дату {selected_date}. Подтвердите запись?",
         reply_markup=reply_markup,
     )
 
-    # Убираем кнопки выбора даты у пользователя
+    # Убираем кнопки выбора услуги у пользователя
     await context.bot.edit_message_reply_markup(
-        chat_id=chat_id,
-        message_id=update.callback_query.message.message_id,
+        chat_id=query.message.chat.id,
+        message_id=query.message.message_id,
         reply_markup=None,  # Убираем клавиатуру
     )
 
     await context.bot.send_message(
-        chat_id=chat_id,
+        chat_id=query.message.chat.id,
         text="Ваш запрос на бронирование отправлен администратору.",
     )
 
@@ -267,11 +311,13 @@ async def confirm_booking(update, context) -> None:
     selected_date = data[1]
     user_id = data[2]
     name = data[3]
+    service_type = data[4]  # Извлекаем тип услуги
+
     reply_markup = get_buttons_for_user(user_id)
 
     # Обновляем информацию о бронировании
     book_date_in_file(
-        selected_date, user_id, name
+        selected_date, user_id, name, service_type  # Передаем тип услуги
     )  # Функция для записи в файл
 
     # Уведомляем пользователя
@@ -279,9 +325,8 @@ async def confirm_booking(update, context) -> None:
         chat_id=user_id, text="Запись подтверждена.", reply_markup=reply_markup
     )
     await query.message.edit_text(
-        text="Запись подтверждена.", reply_markup=reply_markup
+        text="Запись подтверждена.", reply_markup=None
     )
-
 
 
 async def deny_booking(update, context) -> None:
@@ -314,19 +359,22 @@ async def view_personal_records(update, context) -> None:
     if records is None:
         await context.bot.send_message(
             chat_id=update.callback_query.message.chat.id,
-            text="У вас нет записей."
+            text="У вас нет записей.",
         )
         return
 
     # Формируем сообщения на основе полученных записей
-    messages = [f"Вы записаны на прием {date} в {time}." for date, time in records]
+    messages = [
+        f"Вы записаны на прием {date} в {time}." for date, time, _ in records
+    ]
 
     # Отправляем сообщения пользователю
     await context.bot.send_message(
         chat_id=update.callback_query.message.chat.id,
         text="\n".join(messages),
-        reply_markup=reply_markup  # Здесь можно оставить кнопку для отмены записи
+        reply_markup=reply_markup,  # Здесь можно оставить кнопку для отмены записи
     )
+
 
 async def cancel_record(update, context) -> None:
     """Отменяет запись пользователя."""
@@ -336,23 +384,26 @@ async def cancel_record(update, context) -> None:
     if records is None:
         await context.bot.send_message(
             chat_id=update.callback_query.message.chat.id,
-            text="У вас нет записей для отмены."
+            text="У вас нет записей для отмены.",
         )
         return
 
     # Создаем кнопки для каждой записи
     buttons = [
-        InlineKeyboardButton(f"❌ Отменить {date} в {time}",
-                             callback_data=f"confirm_cancel_{date}_{time}")
-        for date, time in records
+        InlineKeyboardButton(
+            f"❌ Отменить {date} в {time}",
+            callback_data=f"confirm_cancel_{date}_{time}",
+        )
+        for date, time, _ in records
     ]
     reply_markup = InlineKeyboardMarkup([[button] for button in buttons])
 
     await context.bot.send_message(
         chat_id=update.callback_query.message.chat.id,
         text="Выберите запись для отмены:",
-        reply_markup=reply_markup
+        reply_markup=reply_markup,
     )
+
 
 async def confirm_cancel_record(update, context) -> None:
     """Подтверждает отмену записи."""
@@ -370,11 +421,53 @@ async def confirm_cancel_record(update, context) -> None:
     await context.bot.send_message(
         chat_id=update.callback_query.message.chat.id,
         text=f"Запись на {date} в {time} отменена.",
-        reply_markup=reply_markup
+        reply_markup=reply_markup,
     )
     await context.bot.send_message(
         chat_id=ADMIN_IDS[0],
-        text=f'Клиент {name}, отменил запись на {date} в {time}.')
+        text=f"Клиент {name}, отменил запись на {date} в {time}.",
+    )
+
+
+async def handle_admin_cancel_date(update, context):
+    """Обработчик для кнопки отмены записи администратором."""
+    query = update.callback_query
+    await query.answer()
+
+
+    # Получаем список предстоящих записей
+    upcoming_records = get_upcoming_records()
+
+
+    # Формируем кнопки для отмены записей
+    buttons = []
+    for record in upcoming_records:
+        date,time, name, service_type, id = record
+        button_text = f"{date} в {time} - {name} ({service_type})"
+        buttons.append([InlineKeyboardButton(button_text, callback_data=f"cancel|{date}|{time}|{id}")])
+
+    # Отправляем сообщение с кнопками
+    reply_markup = InlineKeyboardMarkup(buttons)
+    await query.message.reply_text("Какую запись вы хотите отменить?", reply_markup=reply_markup)
+
+
+async def handle_admin_cancel_record(update, context):
+    """Обработчик для отмены записи по выбранной дате администратором."""
+
+    data = update.callback_query.data.split('|')
+    update_record(int(data[3]), data[1], data[2])
+    await context.bot.send_message(
+        chat_id=ADMIN_IDS[0],
+        text=f"Запись на {data[1]} в {data[2]} отменена.",
+        reply_markup=get_admin_buttons(),
+    )
+    await context.bot.send_message(chat_id=int(data[3]),
+                                   text="К сожалению, ваша запись была отменеа админестратором, попробуйте записаться на другую дату, или свяжитесь с админестратором.",
+                                   reply_markup=get_buttons_for_user(int(data[3])))
+
+
+
+
 
 def setup_handlers(application) -> None:
     """Настраивает обработчики команд и сообщений для бота."""
@@ -430,8 +523,17 @@ def setup_handlers(application) -> None:
         CallbackQueryHandler(confirm_cancel_record, pattern=r"^confirm_cancel_")
     )
 
+    application.add_handler(
+        CallbackQueryHandler(handle_service_choice, pattern="^service_")
+    )
+    application.add_handler(
+        CallbackQueryHandler(handle_admin_cancel_date,
+                             pattern="^admin_cancel_date$")
+    )
+    application.add_handler(
+        CallbackQueryHandler(handle_admin_cancel_record, pattern="^cancel\\|"))
+
     # Обработчик текстовых сообщений для ввода даты
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_date_input)
     )
-

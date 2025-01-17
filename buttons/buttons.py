@@ -6,10 +6,15 @@ def get_admin_buttons():
     buttons = [
         [
             InlineKeyboardButton(
-                "👀 Посмотреть записи", callback_data="view_records"
+                "🗓️ Добавить свободную дату", callback_data="add_date"
             ),
             InlineKeyboardButton(
-                "🗓️ Добавить свободную дату", callback_data="add_date"
+                "🚷  Отменить запись", callback_data="admin_cancel_date"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
+                "👀 Посмотреть записи", callback_data="view_records"
             ),
         ]
     ]
@@ -28,7 +33,9 @@ def get_user_buttons():
         ],
         [
             InlineKeyboardButton("📜Мои записи", callback_data="my_records"),
-            InlineKeyboardButton("❌ Отменить запись", callback_data="cancel_record"),
+            InlineKeyboardButton(
+                "❌ Отменить запись", callback_data="cancel_record"
+            ),
         ],
     ]
     return InlineKeyboardMarkup(buttons)
@@ -38,6 +45,7 @@ def get_cancel_keyboard():
     """Создает клавиатуру с кнопкой отмены."""
     buttons = [[InlineKeyboardButton("❌ Отмена", callback_data="cancel")]]
     return InlineKeyboardMarkup(buttons)
+
 
 def get_type_buttons():
     """Создает кнопки для выбора типа услуг."""
@@ -49,9 +57,9 @@ def get_type_buttons():
             InlineKeyboardButton(
                 "🦶 Педикюр", callback_data="service_pedicure"
             ),
-            InlineKeyboardButton(
-                "🌟 Брови", callback_data="service_brows"
-            ),
+            InlineKeyboardButton("🌟 Брови", callback_data="service_brows"),
         ]
     ]
     return InlineKeyboardMarkup(buttons)
+
+

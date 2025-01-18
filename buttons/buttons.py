@@ -26,6 +26,12 @@ def get_user_buttons():
     buttons = [
         [
             InlineKeyboardButton(
+                "ℹ️Вся информация об услугах",
+                callback_data="full_info",
+            ),
+        ],
+        [
+            InlineKeyboardButton(
                 "👀 Посмотреть свободные даты",
                 callback_data="view_free_records",
             ),

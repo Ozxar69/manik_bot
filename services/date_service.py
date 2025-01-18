@@ -3,56 +3,67 @@ from datetime import datetime, timedelta
 
 import pandas as pd
 
-DATA_FILE = "dates.csv"
+from data import (
+DATA_FILE,
+ERROR_PAST_DATE_MESSAGE,
+ERROR_DUPLICATE_MESSAGE,
+SUCCESS_MESSAGE,
+DATE_DATA,
+TIME_DATA,
+USER_NAME,
+ID_DATA,
+CONFIRMATION_DATA,
+RECORD_TYPE,
+DATE_TIME_FORMAT,
+
+)
 
 
-def add_date(
-    date_str, time_str, name="", confirmation=None, type=""
-):  # Добавляем параметр confirmation
+def add_date(date_str, time_str, name="", confirmation=None, type=""):
+    """Добавляет запись с указанной датой и временем."""
+
     # Проверяем, существует ли файл, и создаем его, если нет
     if not os.path.exists(DATA_FILE):
         df = pd.DataFrame(
-            columns=["Дата", "Время", "Имя", "id", "Подтверждение", "Тип"]
-        )
+            columns=[DATE_DATA, TIME_DATA, USER_NAME, ID_DATA, CONFIRMATION_DATA, RECORD_TYPE])
         df.to_csv(DATA_FILE, index=False)
 
     # Загружаем существующие данные
     df = pd.read_csv(DATA_FILE)
-    df["Имя"] = df["Имя"].astype(str)
-    df["Тип"] = df["Тип"].astype(str)
+    df[USER_NAME] = df[USER_NAME].astype(str)
+    df[USER_NAME] = df[USER_NAME].astype(str)
 
     # Получаем текущий год
     current_year = datetime.now().year
 
     # Формируем полную дату с текущим годом
     date_with_year = f"{date_str}.{current_year}"
-    input_datetime = datetime.strptime(
-        f"{date_with_year} {time_str}", "%d.%m.%Y %H:%M"
-    )
+    input_datetime = datetime.strptime(f"{date_with_year} {time_str}",
+                                       DATE_TIME_FORMAT)
 
     # Проверка на актуальность даты и времени
     current_datetime = datetime.now()
 
     if input_datetime < current_datetime:
-        return "Ошибка: нельзя добавить дату и время, которые уже прошли."
+        return ERROR_PAST_DATE_MESSAGE
 
     # Проверка на дубликаты
-    if ((df["Дата"] == date_with_year) & (df["Время"] == time_str)).any():
-        return "Ошибка: такая дата и время уже существуют, добавьте другую."
+    if ((df[DATE_DATA] == date_with_year) & (df[TIME_DATA] == time_str)).any():
+        return ERROR_DUPLICATE_MESSAGE
 
     # Добавляем новую запись
     new_entry = pd.DataFrame(
         {
-            "Дата": [date_with_year],
-            "Время": [time_str],
-            "Имя": [name],
-            "Подтверждение": [confirmation],
-            "Тип": [type],
+            DATE_DATA: [date_with_year],
+            TIME_DATA: [time_str],
+            USER_NAME: [name],
+            CONFIRMATION_DATA: [confirmation],
+            RECORD_TYPE: [type],
         }
     )
     df = pd.concat([df, new_entry], ignore_index=True)
     df.to_csv(DATA_FILE, index=False)
-    return "Дата успешно добавлена!"
+    return SUCCESS_MESSAGE
 
 
 def get_filtered_records():

@@ -63,6 +63,7 @@ from data import (
     WELCOME_MESSAGE_ADMIN,
     WELCOME_MESSAGE_USER,
     YES_BUTTON,
+    TEXT_INFO,
 )
 from services.date_service import (
     add_date,
@@ -536,6 +537,17 @@ async def handle_admin_cancel_record(update, context):
     )
 
 
+async def view_info(update, context):
+    """Отправляет сообщение с текстом об услугах и другой информации."""
+    chat_id = update.callback_query.from_user.id
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=TEXT_INFO,
+        reply_markup=get_buttons_for_user(chat_id),
+    )
+
+
+
 def setup_handlers(application) -> None:
     """Настраивает обработчики команд и сообщений для бота."""
     application.add_handler(
@@ -600,6 +612,9 @@ def setup_handlers(application) -> None:
     )
     application.add_handler(
         CallbackQueryHandler(handle_admin_cancel_record, pattern="^cancel\\|")
+    )
+    application.add_handler(
+        CallbackQueryHandler(view_info, pattern="full_info")
     )
 
     # Обработчик текстовых сообщений для ввода даты

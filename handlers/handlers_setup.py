@@ -7,6 +7,7 @@ from telegram.ext import (
 
 from handlers.bot_handlers import (
     add_date_handler,
+    ask_date,
     book_date,
     cancel_handler,
     cancel_record,
@@ -18,15 +19,13 @@ from handlers.bot_handlers import (
     handle_booking,
     handle_date_input,
     handle_service_choice,
+    request_confirm_admin_cancel_record,
     view_free_records,
     view_info,
     view_personal_records,
     view_records,
     wake_up,
-    ask_date,
-    request_confirm_admin_cancel_record
 )
-
 
 
 def setup_handlers(application) -> None:
@@ -87,26 +86,26 @@ def setup_handlers(application) -> None:
         CallbackQueryHandler(handle_service_choice, pattern="^service_")
     )
 
-
     application.add_handler(
         CallbackQueryHandler(
             handle_admin_cancel_date, pattern="^admin_cancel_date$"
         )
     )
     application.add_handler(
-        CallbackQueryHandler(request_confirm_admin_cancel_record, pattern="^cancel\\|")
+        CallbackQueryHandler(
+            request_confirm_admin_cancel_record, pattern="^cancel\\|"
+        )
     )
     application.add_handler(
-        CallbackQueryHandler(handle_admin_cancel_record, pattern="handle_admin_cancel_record\\|")
+        CallbackQueryHandler(
+            handle_admin_cancel_record, pattern="handle_admin_cancel_record\\|"
+        )
     )
-
 
     application.add_handler(
         CallbackQueryHandler(view_info, pattern="full_info")
     )
-    application.add_handler(
-        CallbackQueryHandler(ask_date, pattern="ask_date")
-    )
+    application.add_handler(CallbackQueryHandler(ask_date, pattern="ask_date"))
     # Обработчик текстовых сообщений для ввода даты
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_date_input)

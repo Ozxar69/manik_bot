@@ -15,6 +15,7 @@ from data import (
     CANCEL_QUESTION_PROMPT_MESSAGE,
     CANCEL_RECORD_BUTTON_TEXT,
     CANCEL_RECORD_PROMPT_MESSAGE,
+    CONFIRM_CANCELING,
     CONFIRMATION_DATA,
     CONFIRMATION_RECEIVED,
     CONFIRMED_MESSAGE,
@@ -25,6 +26,7 @@ from data import (
     ERROR_DATE_MESSAGE,
     ERROR_MESSAGE,
     FREE_RECORDS_HEADER_MESSAGE,
+    GET_USERNAME_MESSAGE,
     NO_ACTIVE_OPERATION_MESSAGE,
     NO_AVAILABLE_DATES_MESSAGE,
     NO_BUTTON,
@@ -43,6 +45,7 @@ from data import (
     SELECTED_DATE,
     SELECTED_DATE_MESSAGE,
     SERVICE_NAMES,
+    SUCCESS_REQUEST_MESSAGE,
     TEXT_INFO,
     TIME_DATA,
     UNKNOWN_SERVICE,
@@ -50,7 +53,9 @@ from data import (
     USER_CANCEL_NOTIFICATION_MESSAGE,
     USER_NAME,
     USER_REJECTION_MESSAGE,
+    USER_REQUEST_MESSAGE,
     USER_STATE_ADDING_DATE,
+    USER_STATE_CANCELING_RECORD,
     USER_STATES,
     USER_TEXT,
     USER_TEXT2,
@@ -59,12 +64,6 @@ from data import (
     WELCOME_MESSAGE_ADMIN,
     WELCOME_MESSAGE_USER,
     YES_BUTTON,
-    GET_USERNAME_MESSAGE,
-    USER_REQUEST_MESSAGE,
-    SUCCESS_REQUEST_MESSAGE,
-    USER_STATE_CANCELING_RECORD,
-    CONFIRM_CANCELING
-
 )
 from services.date_service import (
     add_date,
@@ -74,7 +73,6 @@ from services.date_service import (
     get_upcoming_records,
     get_user_records,
     update_record,
-
 )
 from user_type import ADMIN_IDS, get_buttons_for_user, is_admin
 
@@ -88,8 +86,7 @@ async def wake_up(update, context) -> None:
 
     if username is None:
         await context.bot.send_message(
-            chat_id=chat_id,
-            text=GET_USERNAME_MESSAGE
+            chat_id=chat_id, text=GET_USERNAME_MESSAGE
         )
         return
 
@@ -537,6 +534,8 @@ async def handle_admin_cancel_date(update, context):
     await query.message.reply_text(
         CANCEL_QUESTION_PROMPT_MESSAGE, reply_markup=reply_markup
     )
+
+
 async def request_confirm_admin_cancel_record(update, context):
     """Запрашивает согласие на отмену записи."""
     query = update.callback_query
@@ -563,9 +562,7 @@ async def request_confirm_admin_cancel_record(update, context):
         ]
     ]
     reply_markup = InlineKeyboardMarkup(buttons)
-    await query.message.reply_text(
-        CONFIRM_CANCELING, reply_markup=reply_markup
-    )
+    await query.message.reply_text(CONFIRM_CANCELING, reply_markup=reply_markup)
 
 
 async def handle_admin_cancel_record(update, context):
@@ -605,6 +602,7 @@ async def view_info(update, context):
         reply_markup=get_buttons_for_user(chat_id),
     )
 
+
 async def ask_date(update, context):
     """Отправляет запрос администратору с просьбой добавить свободные даты."""
     admin_id = ADMIN_IDS[0]
@@ -613,10 +611,10 @@ async def ask_date(update, context):
     await context.bot.send_message(
         chat_id=admin_id,
         text=USER_REQUEST_MESSAGE.format(username=username),
-        reply_markup=get_buttons_for_user(admin_id)
+        reply_markup=get_buttons_for_user(admin_id),
     )
     await context.bot.send_message(
         chat_id=user_id,
         text=SUCCESS_REQUEST_MESSAGE,
-        reply_markup=get_buttons_for_user(user_id)
+        reply_markup=get_buttons_for_user(user_id),
     )

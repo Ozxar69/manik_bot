@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta
 
 import pandas as pd
-from utils.utils import CURRENT_DATETIME
+
 from data import (
     CONFIRMATION_DATA,
     CONFIRMATION_RECEIVED,
@@ -22,6 +22,7 @@ from data import (
     TIME_FORMAT,
     USER_NAME,
 )
+from utils.utils import CURRENT_DATETIME
 
 
 def add_date(date_str, time_str, name="", confirmation=None, type=""):

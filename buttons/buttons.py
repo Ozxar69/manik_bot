@@ -44,8 +44,8 @@ def get_user_buttons():
         ],
         [
             InlineKeyboardButton(
-                "📅 Попросить добавить даты",
-                callback_data="ask_date"),
+                "📅 Попросить добавить даты", callback_data="ask_date"
+            ),
         ],
         [
             InlineKeyboardButton("✍️ Записаться", callback_data="book_date"),

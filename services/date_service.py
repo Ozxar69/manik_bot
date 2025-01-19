@@ -210,7 +210,8 @@ def get_upcoming_records():
 
         if (
             record_date.date() >= CURRENT_DATETIME.date()
-            and row[CONFIRMATION_DATA] == CONFIRMATION_RECEIVED
+                and record_time >= CURRENT_DATETIME.time()
+                and row[CONFIRMATION_DATA] == CONFIRMATION_RECEIVED
         ):
             formatted_date = record_date.strftime(DATE_FORMAT)
             formatted_time = record_time.strftime(TIME_FORMAT)

@@ -2,7 +2,7 @@ import os
 from datetime import datetime, timedelta
 
 import pandas as pd
-
+from utils.utils import CURRENT_DATETIME
 from data import (
     CONFIRMATION_DATA,
     CONFIRMATION_RECEIVED,
@@ -47,7 +47,7 @@ def add_date(date_str, time_str, name="", confirmation=None, type=""):
     df[USER_NAME] = df[USER_NAME].astype(str)
 
     # Получаем текущий год
-    current_year = datetime.now().year
+    current_year = CURRENT_DATETIME.year
 
     # Формируем полную дату с текущим годом
     date_with_year = f"{date_str}.{current_year}"
@@ -55,10 +55,7 @@ def add_date(date_str, time_str, name="", confirmation=None, type=""):
         f"{date_with_year} {time_str}", DATE_TIME_FORMAT
     )
 
-    # Проверка на актуальность даты и времени
-    current_datetime = datetime.now()
-
-    if input_datetime < current_datetime:
+    if input_datetime < CURRENT_DATETIME:
         return ERROR_PAST_DATE_MESSAGE
 
     # Проверка на дубликаты
@@ -93,12 +90,11 @@ def get_filtered_records():
     )
 
     # Фильтрация записей: только записи от сегодняшнего дня до 30 дней вперед
-    today = datetime.now()
-    end_date = today + timedelta(days=30)
-    filtered_records = df[
-        (df[DATE_DATA] >= today) & (df[DATE_DATA] <= end_date)
-    ]
 
+    end_date = CURRENT_DATETIME + timedelta(days=30)
+    filtered_records = df[
+        (df[DATE_DATA] >= CURRENT_DATETIME) & (df[DATE_DATA] <= end_date)
+    ]
     # Ограничиваем количество записей до 30
     return filtered_records.sort_values(by=DATE_DATA).head(30)
 
@@ -113,13 +109,10 @@ def get_available_dates():
     # Фильтруем записи, где подтверждение равно 0 (не подтверждено)
     available_dates = df[df[CONFIRMATION_DATA].isnull()]
 
-    # Получаем текущее время
-    current_time = datetime.now()  # Используем текущее время
-
     # Создаем новый DataFrame с актуальными датами и временем
     available_dates = available_dates[
         available_dates[DATE_DATA] + " " + available_dates[TIME_DATA]
-        > current_time.strftime(DATE_TIME_FORMAT)
+        > CURRENT_DATETIME.strftime(DATE_TIME_FORMAT)
     ]
 
     # Преобразуем даты и время в формат datetime для сортировки
@@ -171,8 +164,6 @@ def get_user_records(user_id):
 
     if user_records.empty:
         return None
-
-    now = datetime.now()
     user_records = user_records[
         (
             pd.to_datetime(
@@ -180,7 +171,7 @@ def get_user_records(user_id):
                 dayfirst=True,
             )
         )
-        > now
+        > CURRENT_DATETIME
     ]
 
     if user_records.empty:
@@ -229,9 +220,6 @@ def get_upcoming_records():
         df[DATE_DATA], format=DATE_FORMAT, dayfirst=True
     )
     df[TIME_DATA] = pd.to_datetime(df[TIME_DATA], format=TIME_FORMAT).dt.time
-
-    # Получаем текущую дату и время
-    now = datetime.now()
     upcoming_records = []
 
     for index, row in df.iterrows():
@@ -243,7 +231,7 @@ def get_upcoming_records():
 
         # Проверяем, что дата не прошла и запись подтверждена
         if (
-            record_date.date() >= now.date()
+            record_date.date() >= CURRENT_DATETIME.date()
             and row[CONFIRMATION_DATA] == CONFIRMATION_RECEIVED
         ):
             # Форматируем дату и время

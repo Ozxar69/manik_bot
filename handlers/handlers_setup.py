@@ -24,8 +24,9 @@ from handlers.bot_handlers import (
     view_records,
     wake_up,
     ask_date,
+    request_confirm_admin_cancel_record
 )
-from utils.utils import handle_phone_number
+
 
 
 def setup_handlers(application) -> None:
@@ -85,23 +86,27 @@ def setup_handlers(application) -> None:
     application.add_handler(
         CallbackQueryHandler(handle_service_choice, pattern="^service_")
     )
+
+
     application.add_handler(
         CallbackQueryHandler(
             handle_admin_cancel_date, pattern="^admin_cancel_date$"
         )
     )
     application.add_handler(
-        CallbackQueryHandler(handle_admin_cancel_record, pattern="^cancel\\|")
+        CallbackQueryHandler(request_confirm_admin_cancel_record, pattern="^cancel\\|")
     )
+    application.add_handler(
+        CallbackQueryHandler(handle_admin_cancel_record, pattern="handle_admin_cancel_record\\|")
+    )
+
+
     application.add_handler(
         CallbackQueryHandler(view_info, pattern="full_info")
     )
     application.add_handler(
         CallbackQueryHandler(ask_date, pattern="ask_date")
     )
-    application.add_handler(MessageHandler(
-        filters.TEXT & ~filters.COMMAND & filters.Regex(r'^\+7\d*$'),
-        handle_phone_number))
     # Обработчик текстовых сообщений для ввода даты
     application.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_date_input)

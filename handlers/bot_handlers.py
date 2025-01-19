@@ -62,6 +62,8 @@ from data import (
     GET_USERNAME_MESSAGE,
     USER_REQUEST_MESSAGE,
     SUCCESS_REQUEST_MESSAGE,
+    USER_STATE_CANCELING_RECORD,
+    CONFIRM_CANCELING
 
 )
 from services.date_service import (
@@ -72,6 +74,7 @@ from services.date_service import (
     get_upcoming_records,
     get_user_records,
     update_record,
+
 )
 from user_type import ADMIN_IDS, get_buttons_for_user, is_admin
 
@@ -122,6 +125,13 @@ async def add_date_handler(update, context) -> None:
 async def cancel_handler(update, context) -> None:
     """Обрабатывает команду отмены."""
     chat_id = update.callback_query.message.chat.id
+    query = update.callback_query
+    await query.answer()
+    await context.bot.edit_message_reply_markup(
+        chat_id=query.message.chat.id,
+        message_id=query.message.message_id,
+        reply_markup=None,
+    )
 
     # Проверяем, есть ли состояние для данного пользователя
     if USER_STATES.get(chat_id) is not None:
@@ -286,6 +296,13 @@ async def book_date(update, context) -> None:
 
 async def handle_booking(update, context) -> None:
     """Обрабатывает выбор даты от пользователя."""
+    query = update.callback_query
+    await query.answer()
+    await context.bot.edit_message_reply_markup(
+        chat_id=query.message.chat.id,
+        message_id=query.message.message_id,
+        reply_markup=None,
+    )
     chat_id = update.callback_query.message.chat.id
     selected_date = update.callback_query.data.split("_")[1]
 
@@ -302,7 +319,7 @@ async def handle_booking(update, context) -> None:
 async def handle_service_choice(update, context):
     """Обработчик выбора типа услуги."""
     query = update.callback_query
-    await query.answer()  # Это важно для подтверждения нажатия кнопки
+    await query.answer()
 
     # Получаем выбранную услугу из callback_data
     chosen_service = query.data.split("_")[1]
@@ -520,14 +537,49 @@ async def handle_admin_cancel_date(update, context):
     await query.message.reply_text(
         CANCEL_QUESTION_PROMPT_MESSAGE, reply_markup=reply_markup
     )
+async def request_confirm_admin_cancel_record(update, context):
+    """Запрашивает согласие на отмену записи."""
+    query = update.callback_query
+    await query.answer()
+    data = update.callback_query.data.split("|")
+    await context.bot.edit_message_reply_markup(
+        chat_id=query.message.chat.id,
+        message_id=query.message.message_id,
+        reply_markup=None,
+    )
+    USER_STATES[ADMIN_IDS[0]] = (
+        USER_STATE_CANCELING_RECORD  # Устанавливаем состояние пользователя
+    )
+    buttons = [
+        [
+            InlineKeyboardButton(
+                YES_BUTTON,
+                callback_data=f"handle_admin_cancel_record|{data[1]}|{data[2]}|{data[3]}",
+            ),
+            InlineKeyboardButton(
+                NO_BUTTON,
+                callback_data="cancel",
+            ),
+        ]
+    ]
+    reply_markup = InlineKeyboardMarkup(buttons)
+    await query.message.reply_text(
+        CONFIRM_CANCELING, reply_markup=reply_markup
+    )
 
 
 async def handle_admin_cancel_record(update, context):
     """Обработчик для отмены записи по выбранной дате администратором."""
-
+    query = update.callback_query
+    await query.answer()
+    await context.bot.edit_message_reply_markup(
+        chat_id=query.message.chat.id,
+        message_id=query.message.message_id,
+        reply_markup=None,
+    )
     data = update.callback_query.data.split("|")
     update_record(int(data[3]), data[1], data[2])
-
+    USER_STATES[ADMIN_IDS[0]] = None
     # Уведомляем администратора
     await context.bot.send_message(
         chat_id=ADMIN_IDS[0],

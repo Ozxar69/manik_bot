@@ -1,11 +1,5 @@
 import pandas as pd
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import (
-    CallbackQueryHandler,
-    CommandHandler,
-    MessageHandler,
-    filters,
-)
 
 from buttons.buttons import (
     get_admin_buttons,
@@ -49,8 +43,10 @@ from data import (
     SELECTED_DATE,
     SELECTED_DATE_MESSAGE,
     SERVICE_NAMES,
+    TEXT_INFO,
     TIME_DATA,
     UNKNOWN_SERVICE,
+    URL_INFO,
     USER_CANCEL_NOTIFICATION_MESSAGE,
     USER_NAME,
     USER_REJECTION_MESSAGE,
@@ -63,7 +59,10 @@ from data import (
     WELCOME_MESSAGE_ADMIN,
     WELCOME_MESSAGE_USER,
     YES_BUTTON,
-    TEXT_INFO,
+    GET_USERNAME_MESSAGE,
+    USER_REQUEST_MESSAGE,
+    SUCCESS_REQUEST_MESSAGE,
+
 )
 from services.date_service import (
     add_date,
@@ -82,9 +81,16 @@ async def wake_up(update, context) -> None:
     chat = update.effective_chat
     chat_id = update.message.chat.id
     name = update.message.chat.first_name
+    username = update.message.chat.username
 
-    # Проверяем, является ли пользователь администратором
-    if is_admin(chat_id):  # Используем функцию для проверки
+    if username is None:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=GET_USERNAME_MESSAGE
+        )
+        return
+
+    if is_admin(chat_id):
         reply_markup = get_admin_buttons()  # Получаем администраторские кнопки
         await context.bot.send_message(
             chat_id=chat.id,
@@ -290,7 +296,6 @@ async def handle_booking(update, context) -> None:
         reply_markup=get_type_buttons(),  # Отправляем кнопки выбора услуг
     )
 
-    # Сохраняем информацию о дате в user_data для дальнейшего использования
     context.user_data[SELECTED_DATE] = selected_date
 
 
@@ -309,6 +314,7 @@ async def handle_service_choice(update, context):
         return
 
     user_id = query.from_user.id
+    username = query.from_user.username
 
     # Получаем читаемое название услуги
     service_name = SERVICE_NAMES.get(chosen_service, UNKNOWN_SERVICE)
@@ -320,7 +326,7 @@ async def handle_service_choice(update, context):
             InlineKeyboardButton(
                 YES_BUTTON,
                 callback_data=f"confirm|{selected_date}|{user_id}"
-                f"|{query.from_user.username}|{service_name}",
+                f"|{username}|{service_name}",
             ),
             InlineKeyboardButton(NO_BUTTON, callback_data=f"deny|{user_id}"),
         ]
@@ -329,7 +335,7 @@ async def handle_service_choice(update, context):
 
     await context.bot.send_message(
         chat_id=admin_id,
-        text=f"{USER_TEXT}{query.from_user.username}"
+        text=f"{USER_TEXT}{username}"
         f"{USER_TEXT2}{service_name}{USER_TEXT3}"
         f"{selected_date}{USER_TEXT4}",
         reply_markup=reply_markup,
@@ -540,84 +546,25 @@ async def handle_admin_cancel_record(update, context):
 async def view_info(update, context):
     """Отправляет сообщение с текстом об услугах и другой информации."""
     chat_id = update.callback_query.from_user.id
+    chat_message = TEXT_INFO + URL_INFO
     await context.bot.send_message(
         chat_id=chat_id,
-        text=TEXT_INFO,
+        text=chat_message,
         reply_markup=get_buttons_for_user(chat_id),
     )
 
-
-
-def setup_handlers(application) -> None:
-    """Настраивает обработчики команд и сообщений для бота."""
-    application.add_handler(
-        CommandHandler("start", wake_up)
-    )  # Обработчик команды /start
-
-    # Обработчик для добавления свободной даты
-    application.add_handler(
-        CallbackQueryHandler(add_date_handler, pattern="^add_date$")
+async def ask_date(update, context):
+    """Отправляет запрос администратору с просьбой добавить свободные даты."""
+    admin_id = ADMIN_IDS[0]
+    username = update.callback_query.from_user.username
+    user_id = update.callback_query.from_user.id
+    await context.bot.send_message(
+        chat_id=admin_id,
+        text=USER_REQUEST_MESSAGE.format(username=username),
+        reply_markup=get_buttons_for_user(admin_id)
     )
-
-    # Обработчик для просмотра записей
-    application.add_handler(
-        CallbackQueryHandler(view_records, pattern="^view_records$")
-    )
-
-    # Обработчик для отмены кнопки отмены
-    application.add_handler(
-        CallbackQueryHandler(cancel_handler, pattern="^cancel$")
-    )
-
-    # Обработчик для просмотра свободных записей
-    application.add_handler(
-        CallbackQueryHandler(view_free_records, pattern="^view_free_records$")
-    )
-
-    # Обработчик для записи на свободную дату
-    application.add_handler(
-        CallbackQueryHandler(book_date, pattern="^book_date$")
-    )
-    application.add_handler(
-        CallbackQueryHandler(handle_booking, pattern="^book_")
-    )
-
-    # Регистрация обработчиков
-    application.add_handler(
-        CallbackQueryHandler(confirm_booking, pattern="^confirm\\|")
-    )
-    application.add_handler(
-        CallbackQueryHandler(deny_booking, pattern="^deny\\|")
-    )
-    # Обработчик для просмотра своих записей
-    application.add_handler(
-        CallbackQueryHandler(view_personal_records, pattern="my_records")
-    )
-
-    application.add_handler(
-        CallbackQueryHandler(cancel_record, pattern="^cancel_record$")
-    )
-    # Добавление обработчика для подтверждения отмены записи
-    application.add_handler(
-        CallbackQueryHandler(confirm_cancel_record, pattern=r"^confirm_cancel_")
-    )
-
-    application.add_handler(
-        CallbackQueryHandler(handle_service_choice, pattern="^service_")
-    )
-    application.add_handler(
-        CallbackQueryHandler(
-            handle_admin_cancel_date, pattern="^admin_cancel_date$"
-        )
-    )
-    application.add_handler(
-        CallbackQueryHandler(handle_admin_cancel_record, pattern="^cancel\\|")
-    )
-    application.add_handler(
-        CallbackQueryHandler(view_info, pattern="full_info")
-    )
-
-    # Обработчик текстовых сообщений для ввода даты
-    application.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_date_input)
+    await context.bot.send_message(
+        chat_id=user_id,
+        text=SUCCESS_REQUEST_MESSAGE,
+        reply_markup=get_buttons_for_user(user_id)
     )

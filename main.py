@@ -3,7 +3,7 @@ import os
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder
 
-from handlers.bot_handlers import setup_handlers
+from handlers.handlers_setup import setup_handlers
 
 
 def main():

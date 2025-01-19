@@ -91,14 +91,14 @@ async def wake_up(update, context) -> None:
         return
 
     if is_admin(chat_id):
-        reply_markup = get_admin_buttons()  # Получаем администраторские кнопки
+        reply_markup = get_admin_buttons()
         await context.bot.send_message(
             chat_id=chat.id,
             text=WELCOME_MESSAGE_ADMIN.format(name),
             reply_markup=reply_markup,
         )
     else:
-        reply_markup = get_user_buttons()  # Получаем пользовательские кнопки
+        reply_markup = get_user_buttons()
         await context.bot.send_message(
             chat_id=chat.id,
             text=WELCOME_MESSAGE_USER.format(name),
@@ -108,10 +108,8 @@ async def wake_up(update, context) -> None:
 
 async def add_date_handler(update, context) -> None:
     """Запрашивает у пользователя ввод даты и времени."""
-    chat_id = update.callback_query.message.chat.id  # Используем callback_query
-    USER_STATES[chat_id] = (
-        USER_STATE_ADDING_DATE  # Устанавливаем состояние пользователя
-    )
+    chat_id = update.callback_query.message.chat.id
+    USER_STATES[chat_id] = USER_STATE_ADDING_DATE
     await context.bot.send_message(
         chat_id=chat_id,
         text=DATE_REQUEST_MESSAGE,
@@ -130,9 +128,8 @@ async def cancel_handler(update, context) -> None:
         reply_markup=None,
     )
 
-    # Проверяем, есть ли состояние для данного пользователя
     if USER_STATES.get(chat_id) is not None:
-        USER_STATES[chat_id] = None  # Сбрасываем состояние
+        USER_STATES[chat_id] = None
         await context.bot.send_message(
             chat_id=chat_id, text=CANCEL_OPERATION_MESSAGE
         )
@@ -143,7 +140,6 @@ async def cancel_handler(update, context) -> None:
 
     reply_markup = get_buttons_for_user(chat_id)
 
-    # Отправляем сообщение с кнопками
     await context.bot.send_message(
         chat_id=chat_id, text=SELECT_ACTION_MESSAGE, reply_markup=reply_markup
     )
@@ -157,12 +153,8 @@ async def handle_date_input(update, context) -> None:
         date_time = update.message.text
 
         try:
-            date_str, time_str = (
-                date_time.split()
-            )  # Разделяем ввод на дату и время
-            result_message = add_date(
-                date_str, time_str
-            )  # Используем функцию для добавления даты
+            date_str, time_str = date_time.split()
+            result_message = add_date(date_str, time_str)
 
             if ERROR_MESSAGE in result_message:
                 await context.bot.send_message(
@@ -177,9 +169,7 @@ async def handle_date_input(update, context) -> None:
                 text=result_message,
                 reply_markup=get_cancel_keyboard(),
             )
-            USER_STATES[chat_id] = (
-                None  # Сбрасываем состояние только при успешном добавлении
-            )
+            USER_STATES[chat_id] = None
         except ValueError:
             await context.bot.send_message(
                 chat_id=chat_id,
@@ -203,10 +193,8 @@ async def view_records(update, context) -> None:
     chat_id = update.callback_query.message.chat.id
     reply_markup = get_buttons_for_user(chat_id)
 
-    # Получаем отфильтрованные записи
     sorted_records = get_filtered_records()
 
-    # Формирование сообщения
     if not sorted_records.empty:
         message = RECORDS_HEADER_MESSAGE
         for index, row in sorted_records.iterrows():
@@ -215,13 +203,11 @@ async def view_records(update, context) -> None:
                 f"⏰  {row[TIME_DATA]}  ⏰\n"
             )
 
-            # Добавляем имя, если оно не "Неизвестно"
             if row[USER_NAME] is not None and not pd.isna(row[USER_NAME]):
                 record_message += f"👤  {row[USER_NAME]: <22}"
             if row[RECORD_TYPE] is not None and not pd.isna(row[RECORD_TYPE]):
                 record_message += f"🌟  {row[RECORD_TYPE]}\n"
 
-            # Добавляем подтверждение, если оно равно 1
             if row[CONFIRMATION_DATA] == CONFIRMATION_RECEIVED:
                 record_message += f"{CONFIRMED_MESSAGE: >30}\n"
 
@@ -240,13 +226,10 @@ async def view_free_records(update, context) -> None:
     chat_id = update.callback_query.message.chat.id
     reply_markup = get_buttons_for_user(chat_id)
 
-    # Получаем отфильтрованные записи
     sorted_records = get_filtered_records()
 
-    # Фильтруем записи, где нет подтверждения
     free_records = sorted_records[sorted_records[CONFIRMATION_DATA].isnull()]
 
-    # Формирование сообщения
     if not free_records.empty:
         message = FREE_RECORDS_HEADER_MESSAGE
         for index, row in free_records.iterrows():
@@ -277,7 +260,6 @@ async def book_date(update, context) -> None:
         )
         return
 
-    # Создаем клавиатуру с доступными датами
     keyboard = [
         [InlineKeyboardButton(date, callback_data=f"book_{date}")]
         for date in available_dates
@@ -303,11 +285,10 @@ async def handle_booking(update, context) -> None:
     chat_id = update.callback_query.message.chat.id
     selected_date = update.callback_query.data.split("_")[1]
 
-    # Отправляем пользователю кнопки для выбора услуги
     await context.bot.send_message(
         chat_id=chat_id,
         text=SELECTED_DATE_MESSAGE.format(selected_date),
-        reply_markup=get_type_buttons(),  # Отправляем кнопки выбора услуг
+        reply_markup=get_type_buttons(),
     )
 
     context.user_data[SELECTED_DATE] = selected_date
@@ -318,10 +299,8 @@ async def handle_service_choice(update, context):
     query = update.callback_query
     await query.answer()
 
-    # Получаем выбранную услугу из callback_data
     chosen_service = query.data.split("_")[1]
 
-    # Извлекаем дату из user_data
     selected_date = context.user_data.get(SELECTED_DATE)
     if not selected_date:
         await query.message.reply_text(ERROR_DATE_MESSAGE)
@@ -330,10 +309,8 @@ async def handle_service_choice(update, context):
     user_id = query.from_user.id
     username = query.from_user.username
 
-    # Получаем читаемое название услуги
     service_name = SERVICE_NAMES.get(chosen_service, UNKNOWN_SERVICE)
 
-    # Отправляем сообщение администратору
     admin_id = ADMIN_IDS[0]
     keyboard = [
         [
@@ -355,7 +332,6 @@ async def handle_service_choice(update, context):
         reply_markup=reply_markup,
     )
 
-    # Убираем кнопки выбора услуги у пользователя
     await context.bot.edit_message_reply_markup(
         chat_id=query.message.chat.id,
         message_id=query.message.message_id,
@@ -371,23 +347,18 @@ async def handle_service_choice(update, context):
 async def confirm_booking(update, context) -> None:
     """Обрабатывает подтверждение бронирования пользователем."""
     query = update.callback_query
-    await query.answer()  # Это важно для подтверждения нажатия кнопки
+    await query.answer()
 
-    # Извлекаем данные из callback_data
     data = query.data.split("|")
     selected_date = data[1]
     user_id = data[2]
     name = data[3]
-    service_type = data[4]  # Извлекаем тип услуги
+    service_type = data[4]
 
     reply_markup = get_buttons_for_user(user_id)
 
-    # Обновляем информацию о бронировании
-    book_date_in_file(
-        selected_date, user_id, name, service_type  # Передаем тип услуги
-    )  # Функция для записи в файл
+    book_date_in_file(selected_date, user_id, name, service_type)
 
-    # Уведомляем пользователя
     await context.bot.send_message(
         chat_id=user_id, text=CONFIRMED_MESSAGE, reply_markup=reply_markup
     )
@@ -398,11 +369,10 @@ async def deny_booking(update, context) -> None:
     """Обрабатывает отклонение бронирования пользователем."""
     query = update.callback_query
     chat_id = update.callback_query.message.chat.id
-    await query.answer()  # Это важно для подтверждения нажатия кнопки
+    await query.answer()
     reply_markup = get_buttons_for_user(chat_id)
-    user_id = query.data.split("|")[1]  # Извлекаем ID пользователя
+    user_id = query.data.split("|")[1]
 
-    # Обновляем сообщение с отключенными кнопками
     await query.message.edit_text(
         text=REJECTION_MESSAGE, reply_markup=reply_markup
     )
@@ -417,11 +387,10 @@ async def deny_booking(update, context) -> None:
 
 async def view_personal_records(update, context) -> None:
     """Обрабатывает запрос пользователя на просмотр своих записей."""
-    user_id = update.callback_query.from_user.id  # Получаем ID пользователя
-    records = get_user_records(user_id)  # Получаем записи пользователя
+    user_id = update.callback_query.from_user.id
+    records = get_user_records(user_id)
     reply_markup = get_buttons_for_user(user_id)
 
-    # Проверяем, есть ли записи
     if records is None or len(records) == 0:
         await context.bot.send_message(
             chat_id=update.callback_query.message.chat.id,
@@ -429,24 +398,22 @@ async def view_personal_records(update, context) -> None:
         )
         return
 
-    # Формируем сообщения на основе полученных записей
     messages = [
         RECORDS_MESSAGE_TEMPLATE.format(type=type, date=date, time=time)
         for date, time, type in records
     ]
 
-    # Отправляем сообщения пользователю
     await context.bot.send_message(
         chat_id=update.callback_query.message.chat.id,
         text="\n".join(messages),
-        reply_markup=reply_markup,  # Здесь оставить кнопку для отмены записи
+        reply_markup=reply_markup,
     )
 
 
 async def cancel_record(update, context) -> None:
     """Отменяет запись пользователя."""
     user_id = update.callback_query.from_user.id
-    records = get_user_records(user_id)  # Получаем записи пользователя
+    records = get_user_records(user_id)
 
     if records is None or len(records) == 0:
         await context.bot.send_message(
@@ -455,7 +422,6 @@ async def cancel_record(update, context) -> None:
         )
         return
 
-    # Создаем кнопки для каждой записи
     buttons = [
         InlineKeyboardButton(
             CANCEL_RECORD_BUTTON_TEXT.format(type=type, date=date, time=time),
@@ -480,21 +446,18 @@ async def confirm_cancel_record(update, context) -> None:
     date = data[2]
     time = data[3]
 
-    # Обновляем запись в CSV
     update_record(user_id, date, time)
 
     await update.callback_query.answer()
     reply_markup = get_user_buttons()
     await update.callback_query.edit_message_reply_markup(reply_markup=None)
 
-    # Отправляем сообщение пользователю
     await context.bot.send_message(
         chat_id=update.callback_query.message.chat.id,
         text=RECORD_CANCELLED_MESSAGE.format(date=date, time=time),
         reply_markup=reply_markup,
     )
 
-    # Уведомляем администратора
     await context.bot.send_message(
         chat_id=ADMIN_IDS[0],
         text=ADMIN_CANCEL_NOTIFICATION_MESSAGE.format(
@@ -508,15 +471,12 @@ async def handle_admin_cancel_date(update, context):
     query = update.callback_query
     await query.answer()
 
-    # Получаем список предстоящих записей
     upcoming_records = get_upcoming_records()
 
-    # Проверяем, есть ли записи для отмены
     if not upcoming_records:
         await query.message.reply_text(NO_UPCOMING_RECORDS_MESSAGE)
         return
 
-    # Формируем кнопки для отмены записей
     buttons = []
     for record in upcoming_records:
         date, time, name, service_type, id = record
@@ -529,7 +489,6 @@ async def handle_admin_cancel_date(update, context):
             ]
         )
 
-    # Отправляем сообщение с кнопками
     reply_markup = InlineKeyboardMarkup(buttons)
     await query.message.reply_text(
         CANCEL_QUESTION_PROMPT_MESSAGE, reply_markup=reply_markup
@@ -546,14 +505,13 @@ async def request_confirm_admin_cancel_record(update, context):
         message_id=query.message.message_id,
         reply_markup=None,
     )
-    USER_STATES[ADMIN_IDS[0]] = (
-        USER_STATE_CANCELING_RECORD  # Устанавливаем состояние пользователя
-    )
+    USER_STATES[ADMIN_IDS[0]] = USER_STATE_CANCELING_RECORD
     buttons = [
         [
             InlineKeyboardButton(
                 YES_BUTTON,
-                callback_data=f"handle_admin_cancel_record|{data[1]}|{data[2]}|{data[3]}",
+                callback_data=f"handle_admin_cancel_record|{data[1]}"
+                f"|{data[2]}|{data[3]}",
             ),
             InlineKeyboardButton(
                 NO_BUTTON,
@@ -577,14 +535,13 @@ async def handle_admin_cancel_record(update, context):
     data = update.callback_query.data.split("|")
     update_record(int(data[3]), data[1], data[2])
     USER_STATES[ADMIN_IDS[0]] = None
-    # Уведомляем администратора
+
     await context.bot.send_message(
         chat_id=ADMIN_IDS[0],
         text=ADMIN_CANCEL_RECORD_MESSAGE.format(date=data[1], time=data[2]),
         reply_markup=get_admin_buttons(),
     )
 
-    # Уведомляем пользователя
     await context.bot.send_message(
         chat_id=int(data[3]),
         text=USER_CANCEL_NOTIFICATION_MESSAGE,

@@ -28,7 +28,6 @@ from utils.utils import CURRENT_DATETIME
 def add_date(date_str, time_str, name="", confirmation=None, type=""):
     """Добавляет запись с указанной датой и временем."""
 
-    # Проверяем, существует ли файл, и создаем его, если нет
     if not os.path.exists(DATA_FILE):
         df = pd.DataFrame(
             columns=[
@@ -42,15 +41,12 @@ def add_date(date_str, time_str, name="", confirmation=None, type=""):
         )
         df.to_csv(DATA_FILE, index=False)
 
-    # Загружаем существующие данные
     df = pd.read_csv(DATA_FILE)
     df[USER_NAME] = df[USER_NAME].astype(str)
     df[USER_NAME] = df[USER_NAME].astype(str)
 
-    # Получаем текущий год
     current_year = CURRENT_DATETIME.year
 
-    # Формируем полную дату с текущим годом
     date_with_year = f"{date_str}.{current_year}"
     input_datetime = datetime.strptime(
         f"{date_with_year} {time_str}", DATE_TIME_FORMAT
@@ -59,11 +55,9 @@ def add_date(date_str, time_str, name="", confirmation=None, type=""):
     if input_datetime < CURRENT_DATETIME:
         return ERROR_PAST_DATE_MESSAGE
 
-    # Проверка на дубликаты
     if ((df[DATE_DATA] == date_with_year) & (df[TIME_DATA] == time_str)).any():
         return ERROR_DUPLICATE_MESSAGE
 
-    # Добавляем новую запись
     new_entry = pd.DataFrame(
         {
             DATE_DATA: [date_with_year],
@@ -81,51 +75,42 @@ def add_date(date_str, time_str, name="", confirmation=None, type=""):
 def get_filtered_records():
     """Возвращает отфильтрованные записи по дате и времени."""
     if not os.path.exists(DATA_FILE):
-        return (
-            pd.DataFrame()
-        )  # Возвращаем пустой DataFrame, если файл не существует
+        return pd.DataFrame()
 
     df = pd.read_csv(DATA_FILE)
     df[DATE_DATA] = pd.to_datetime(
         df[DATE_DATA] + " " + df[TIME_DATA], format=DATE_TIME_FORMAT
     )
 
-    # Фильтрация записей: только записи от сегодняшнего дня до 30 дней вперед
-
     end_date = CURRENT_DATETIME + timedelta(days=30)
     filtered_records = df[
         (df[DATE_DATA] >= CURRENT_DATETIME) & (df[DATE_DATA] <= end_date)
     ]
-    # Ограничиваем количество записей до 30
+
     return filtered_records.sort_values(by=DATE_DATA).head(30)
 
 
 def get_available_dates():
     """Возвращает список доступных дат для бронирования."""
     if not os.path.exists(DATA_FILE):
-        return []  # Если файл не существует, возвращаем пустой список
+        return []
 
     df = pd.read_csv(DATA_FILE)
 
-    # Фильтруем записи, где подтверждение равно 0 (не подтверждено)
     available_dates = df[df[CONFIRMATION_DATA].isnull()]
 
-    # Создаем новый DataFrame с актуальными датами и временем
     available_dates = available_dates[
         available_dates[DATE_DATA] + " " + available_dates[TIME_DATA]
         > CURRENT_DATETIME.strftime(DATE_TIME_FORMAT)
     ]
 
-    # Преобразуем даты и время в формат datetime для сортировки
     available_dates[DATE_TIME_DATA] = pd.to_datetime(
         available_dates[DATE_DATA] + " " + available_dates[TIME_DATA],
         format=DATE_TIME_FORMAT,
     )
 
-    # Сортируем по дате и времени
     available_dates = available_dates.sort_values(by=DATE_TIME_DATA)
 
-    # Возвращаем список доступных дат в нужном формате
     return [
         f"{row[DATE_DATA]} {row[TIME_DATA]}"
         for index, row in available_dates.iterrows()
@@ -139,28 +124,24 @@ def book_date_in_file(selected_date, user_id, name, service_type):
 
     df = pd.read_csv(DATA_FILE)
 
-    # Разделяем дату и время
     date_str, time_str = selected_date.split()
 
-    # Находим строку с выбранной датой и временем
     index = df[(df[DATE_DATA] == date_str) & (df[TIME_DATA] == time_str)].index
 
     if index.empty:
         return ERROR_DATE_TIME_NOT_FOUND
 
-    # Обновляем информацию о бронировании
     df.at[index[0], USER_NAME] = "@" + name
     df.at[index[0], ID_DATA] = int(user_id)
     df.at[index[0], CONFIRMATION_DATA] = CONFIRMATION_RECEIVED
-    df.at[index[0], RECORD_TYPE] = service_type  # Записываем тип услуги
+    df.at[index[0], RECORD_TYPE] = service_type
 
-    # Сохраняем изменения в файл
     df.to_csv(DATA_FILE, index=False)
 
 
 def get_user_records(user_id):
     """Получает записи пользователя по его ID, исключая прошедшие записи."""
-    df = pd.read_csv(DATA_FILE)  # Загружаем данные из CSV файла
+    df = pd.read_csv(DATA_FILE)
     user_records = df[df[ID_DATA] == user_id]
 
     if user_records.empty:
@@ -191,7 +172,6 @@ def update_record(user_id, date, time):
     """Обновляет запись пользователя в CSV файле."""
     df = pd.read_csv(DATA_FILE)
 
-    # Проверяем, существует ли запись
     record_exists = df[
         (df[ID_DATA] == user_id)
         & (df[DATE_DATA] == date)
@@ -200,7 +180,6 @@ def update_record(user_id, date, time):
     if record_exists.empty:
         return False
 
-    # Обновляем записи, где ID пользователя совпадает
     df.loc[
         (df[ID_DATA] == user_id)
         & (df[DATE_DATA] == date)
@@ -216,7 +195,6 @@ def get_upcoming_records():
     """Возвращает список предстоящих записей."""
     df = pd.read_csv(DATA_FILE)
 
-    # Преобразуем столбцы "Дата" и "Время" в нужные форматы
     df[DATE_DATA] = pd.to_datetime(
         df[DATE_DATA], format=DATE_FORMAT, dayfirst=True
     )
@@ -230,20 +208,16 @@ def get_upcoming_records():
         service_type = row[RECORD_TYPE]
         id = row[ID_DATA]
 
-        # Проверяем, что дата не прошла и запись подтверждена
         if (
             record_date.date() >= CURRENT_DATETIME.date()
             and row[CONFIRMATION_DATA] == CONFIRMATION_RECEIVED
         ):
-            # Форматируем дату и время
             formatted_date = record_date.strftime(DATE_FORMAT)
             formatted_time = record_time.strftime(TIME_FORMAT)
 
-            # Добавляем отформатированные данные в список
             upcoming_records.append(
                 (formatted_date, formatted_time, name, service_type, int(id))
             )
 
-    # Сортируем список по дате
     upcoming_records.sort(key=lambda x: datetime.strptime(x[0], DATE_FORMAT))
     return upcoming_records

@@ -24,6 +24,7 @@ from data import (
     DATE_REQUEST_MESSAGE,
     DATE_TIME_FORMAT_ERROR_MESSAGE,
     ERROR_DATE_MESSAGE,
+    ERROR_DELETE_MESSAGE,
     ERROR_MESSAGE,
     FREE_RECORDS_HEADER_MESSAGE,
     GET_USERNAME_MESSAGE,
@@ -42,9 +43,11 @@ from data import (
     SELECT_ACTION_MESSAGE,
     SELECT_COMMAND_MESSAGE,
     SELECT_DATE_MESSAGE,
+    SELECT_DELETING_DATE_MESSAGE,
     SELECTED_DATE,
     SELECTED_DATE_MESSAGE,
     SERVICE_NAMES,
+    SUCCESS_DELETE_MESSAGE,
     SUCCESS_REQUEST_MESSAGE,
     TEXT_INFO,
     TIME_DATA,
@@ -68,6 +71,7 @@ from data import (
 from services.date_service import (
     add_date,
     book_date_in_file,
+    delete_date,
     get_available_dates,
     get_filtered_records,
     get_upcoming_records,
@@ -575,3 +579,47 @@ async def ask_date(update, context):
         text=SUCCESS_REQUEST_MESSAGE,
         reply_markup=get_buttons_for_user(user_id),
     )
+
+
+async def get_dates_for_deleting(update, context):
+    """Получаем кнопки для удаления даты."""
+    chat_id = update.callback_query.from_user.id
+    available_dates = get_available_dates()
+
+    keyboard = [
+        [InlineKeyboardButton(date, callback_data=f"delete|{date}")]
+        for date in available_dates
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=SELECT_DELETING_DATE_MESSAGE,
+        reply_markup=reply_markup,
+    )
+
+
+async def delete_dates(update, context):
+    """Удаляет выбранную дату из файла."""
+    chat_id = update.callback_query.from_user.id
+    query = update.callback_query
+    await query.answer()
+    await context.bot.edit_message_reply_markup(
+        chat_id=query.message.chat.id,
+        message_id=query.message.message_id,
+        reply_markup=None,
+    )
+    data = update.callback_query.data.split("|")
+    delete = delete_date(data[1])
+    if delete is False:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=ERROR_DELETE_MESSAGE,
+        )
+
+    else:
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=SUCCESS_DELETE_MESSAGE.format(data=data[1]),
+            reply_markup=get_buttons_for_user(chat_id),
+        )

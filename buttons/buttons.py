@@ -14,6 +14,11 @@ def get_admin_buttons():
         ],
         [
             InlineKeyboardButton(
+                "🚫 Удалить дату", callback_data="get_dates_for_deleting"
+            ),
+        ],
+        [
+            InlineKeyboardButton(
                 "👀 Посмотреть записи", callback_data="view_records"
             ),
         ],

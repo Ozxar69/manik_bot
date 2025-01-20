@@ -13,7 +13,9 @@ from handlers.bot_handlers import (
     cancel_record,
     confirm_booking,
     confirm_cancel_record,
+    delete_dates,
     deny_booking,
+    get_dates_for_deleting,
     handle_admin_cancel_date,
     handle_admin_cancel_record,
     handle_booking,
@@ -100,6 +102,14 @@ def setup_handlers(application) -> None:
         CallbackQueryHandler(
             handle_admin_cancel_record, pattern="handle_admin_cancel_record\\|"
         )
+    )
+    application.add_handler(
+        CallbackQueryHandler(
+            get_dates_for_deleting, pattern="get_dates_for_deleting"
+        )
+    )
+    application.add_handler(
+        CallbackQueryHandler(delete_dates, pattern="delete\\|")
     )
 
     application.add_handler(

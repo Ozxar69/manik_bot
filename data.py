@@ -149,3 +149,11 @@ SUCCESS_REQUEST_MESSAGE = (
 
 
 CONFIRM_CANCELING = "Подтверждаете отмену?"
+
+SELECT_DELETING_DATE_MESSAGE = (
+    "Пожалуйста выберите дату которую хотите убрать:\n"
+)
+
+ERROR_DELETE_MESSAGE = "Ошибка даты, обратитесь к разработчику."
+
+SUCCESS_DELETE_MESSAGE = "Выбранная дата {data} удалена."

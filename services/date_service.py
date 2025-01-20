@@ -207,11 +207,13 @@ def get_upcoming_records():
         name = row[USER_NAME]
         service_type = row[RECORD_TYPE]
         id = row[ID_DATA]
+        record_datetime = datetime.combine(
+            row[DATE_DATA].date(), row[TIME_DATA]
+        )
 
         if (
-            record_date.date() >= CURRENT_DATETIME.date()
-                and record_time >= CURRENT_DATETIME.time()
-                and row[CONFIRMATION_DATA] == CONFIRMATION_RECEIVED
+            record_datetime >= CURRENT_DATETIME
+            and row[CONFIRMATION_DATA] == CONFIRMATION_RECEIVED
         ):
             formatted_date = record_date.strftime(DATE_FORMAT)
             formatted_time = record_time.strftime(TIME_FORMAT)
@@ -222,3 +224,24 @@ def get_upcoming_records():
 
     upcoming_records.sort(key=lambda x: datetime.strptime(x[0], DATE_FORMAT))
     return upcoming_records
+
+
+def delete_date(record):
+    """Удаляет выбранную дату."""
+    date = record.split(" ")
+
+    df = pd.read_csv(DATA_FILE)
+    record_exists = df[
+        (df[DATE_DATA] == date[0])
+        & (df[TIME_DATA] == date[1])
+        & (df[CONFIRMATION_DATA] != CONFIRMATION_RECEIVED)
+    ]
+    if record_exists is None:
+        return False
+    else:
+
+        df = df.drop(record_exists.index)
+
+        df.to_csv(DATA_FILE, index=False)
+
+        return True

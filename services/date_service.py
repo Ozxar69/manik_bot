@@ -97,12 +97,17 @@ def get_available_dates():
 
     df = pd.read_csv(DATA_FILE)
 
-    available_dates = df[df[CONFIRMATION_DATA].isnull()]
+    available_dates = df[df[CONFIRMATION_DATA].isnull()].copy()
+
+    # Используем .loc для изменения оригинального DataFrame
+    available_dates['DATETIME'] = pd.to_datetime(
+        available_dates[DATE_DATA] + " " + available_dates[TIME_DATA],
+        format=DATE_TIME_FORMAT
+    )
 
     available_dates = available_dates[
-        available_dates[DATE_DATA] + " " + available_dates[TIME_DATA]
-        > CURRENT_DATETIME.strftime(DATE_TIME_FORMAT)
-    ]
+        available_dates['DATETIME'] > CURRENT_DATETIME
+        ]
 
     available_dates[DATE_TIME_DATA] = pd.to_datetime(
         available_dates[DATE_DATA] + " " + available_dates[TIME_DATA],

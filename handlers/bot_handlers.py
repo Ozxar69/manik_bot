@@ -67,6 +67,7 @@ from data import (
     WELCOME_MESSAGE_ADMIN,
     WELCOME_MESSAGE_USER,
     YES_BUTTON,
+CONFIRMED_MESSAGE_FOR_USER,
 )
 from services.date_service import (
     add_date,
@@ -364,7 +365,11 @@ async def confirm_booking(update, context) -> None:
     book_date_in_file(selected_date, user_id, name, service_type)
 
     await context.bot.send_message(
-        chat_id=user_id, text=CONFIRMED_MESSAGE, reply_markup=reply_markup
+        chat_id=user_id,
+        text=CONFIRMED_MESSAGE_FOR_USER.format(
+            type=service_type, date=selected_date
+        ),
+        reply_markup=reply_markup
     )
     await query.message.edit_text(text=CONFIRMED_MESSAGE, reply_markup=None)
 

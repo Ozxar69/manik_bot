@@ -121,6 +121,7 @@ async def wake_up(update, context) -> None:
 async def add_date_handler(update, context) -> None:
     """Запрашивает у пользователя ввод даты и времени."""
     chat_id = update.callback_query.message.chat.id
+    await update.callback_query.message.delete()
     USER_STATES[chat_id] = USER_STATE_ADDING_DATE
     await context.bot.send_message(
         chat_id=chat_id,
@@ -194,7 +195,6 @@ async def handle_date_input(update, context) -> None:
             return
     elif USER_STATES.get(chat_id) == USER_STATE_ADDING_COMMENT:
         await handle_comment_input(update, context)
-        await update.callback_query.message.delete()
     else:
         reply_markup = get_buttons_for_user(chat_id)
         await context.bot.send_message(

@@ -1,6 +1,6 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
-
+cancel = [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
 def get_admin_buttons():
     """Создает администраторские кнопки."""
     buttons = [
@@ -61,7 +61,7 @@ def get_user_buttons():
 
 def get_cancel_keyboard():
     """Создает клавиатуру с кнопкой отмены."""
-    buttons = [[InlineKeyboardButton("❌ Отмена", callback_data="cancel")]]
+    buttons = [cancel]
     return InlineKeyboardMarkup(buttons)
 
 
@@ -78,4 +78,10 @@ def get_type_buttons():
             InlineKeyboardButton("🌟 Брови", callback_data="service_brows"),
         ]
     ]
+    return InlineKeyboardMarkup(buttons)
+
+
+def get_asking_buttons():
+    buttons = [[InlineKeyboardButton("Отправить запрос", callback_data="send_handler")],
+               cancel]
     return InlineKeyboardMarkup(buttons)

@@ -22,7 +22,7 @@ from data import (
     TIME_FORMAT,
     USER_NAME,
 )
-from utils.utils import CURRENT_DATETIME
+from utils.utils import get_current_time
 
 
 def add_date(date_str, time_str, name="", confirmation=None, type=""):
@@ -44,7 +44,7 @@ def add_date(date_str, time_str, name="", confirmation=None, type=""):
     df = pd.read_csv(DATA_FILE)
     df[USER_NAME] = df[USER_NAME].astype(str)
     df[USER_NAME] = df[USER_NAME].astype(str)
-
+    CURRENT_DATETIME = get_current_time()
     current_year = CURRENT_DATETIME.year
 
     date_with_year = f"{date_str}.{current_year}"
@@ -81,7 +81,7 @@ def get_filtered_records():
     df[DATE_DATA] = pd.to_datetime(
         df[DATE_DATA] + " " + df[TIME_DATA], format=DATE_TIME_FORMAT
     )
-
+    CURRENT_DATETIME = get_current_time()
     end_date = CURRENT_DATETIME + timedelta(days=30)
     filtered_records = df[
         (df[DATE_DATA] >= CURRENT_DATETIME) & (df[DATE_DATA] <= end_date)
@@ -104,7 +104,7 @@ def get_available_dates():
         available_dates[DATE_DATA] + " " + available_dates[TIME_DATA],
         format=DATE_TIME_FORMAT
     )
-
+    CURRENT_DATETIME = get_current_time()
     available_dates = available_dates[
         available_dates['DATETIME'] > CURRENT_DATETIME
         ]
@@ -148,7 +148,7 @@ def get_user_records(user_id):
     """Получает записи пользователя по его ID, исключая прошедшие записи."""
     df = pd.read_csv(DATA_FILE)
     user_records = df[df[ID_DATA] == user_id]
-
+    CURRENT_DATETIME = get_current_time()
     if user_records.empty:
         return None
     user_records = user_records[
@@ -215,7 +215,7 @@ def get_upcoming_records():
         record_datetime = datetime.combine(
             row[DATE_DATA].date(), row[TIME_DATA]
         )
-
+        CURRENT_DATETIME = get_current_time()
         if (
             record_datetime >= CURRENT_DATETIME
             and row[CONFIRMATION_DATA] == CONFIRMATION_RECEIVED

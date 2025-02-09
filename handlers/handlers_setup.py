@@ -27,6 +27,7 @@ from handlers.bot_handlers import (
     view_personal_records,
     view_records,
     wake_up,
+send_handler,
 )
 
 
@@ -34,29 +35,24 @@ def setup_handlers(application) -> None:
     """Настраивает обработчики команд и сообщений для бота."""
     application.add_handler(
         CommandHandler("start", wake_up)
-    )  # Обработчик команды /start
+    )
 
-    # Обработчик для добавления свободной даты
     application.add_handler(
         CallbackQueryHandler(add_date_handler, pattern="^add_date$")
     )
 
-    # Обработчик для просмотра записей
     application.add_handler(
         CallbackQueryHandler(view_records, pattern="^view_records$")
     )
 
-    # Обработчик для отмены кнопки отмены
     application.add_handler(
         CallbackQueryHandler(cancel_handler, pattern="^cancel$")
     )
 
-    # Обработчик для просмотра свободных записей
     application.add_handler(
         CallbackQueryHandler(view_free_records, pattern="^view_free_records$")
     )
 
-    # Обработчик для записи на свободную дату
     application.add_handler(
         CallbackQueryHandler(book_date, pattern="^book_date$")
     )
@@ -64,14 +60,13 @@ def setup_handlers(application) -> None:
         CallbackQueryHandler(handle_booking, pattern="^book_")
     )
 
-    # Регистрация обработчиков
     application.add_handler(
         CallbackQueryHandler(confirm_booking, pattern="^confirm\\|")
     )
     application.add_handler(
         CallbackQueryHandler(deny_booking, pattern="^deny\\|")
     )
-    # Обработчик для просмотра своих записей
+
     application.add_handler(
         CallbackQueryHandler(view_personal_records, pattern="my_records")
     )
@@ -79,7 +74,7 @@ def setup_handlers(application) -> None:
     application.add_handler(
         CallbackQueryHandler(cancel_record, pattern="^cancel_record$")
     )
-    # Добавление обработчика для подтверждения отмены записи
+
     application.add_handler(
         CallbackQueryHandler(confirm_cancel_record, pattern=r"^confirm_cancel_")
     )
@@ -115,8 +110,10 @@ def setup_handlers(application) -> None:
     application.add_handler(
         CallbackQueryHandler(view_info, pattern="full_info")
     )
-    application.add_handler(CallbackQueryHandler(ask_date, pattern="ask_date"))
-    # Обработчик текстовых сообщений для ввода даты
     application.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_date_input)
-    )
+        CallbackQueryHandler(send_handler, pattern="send_handler"))
+    application.add_handler(
+        CallbackQueryHandler(ask_date, pattern="^ask_date$"))
+
+    application.add_handler(
+        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_date_input))

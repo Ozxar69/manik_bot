@@ -6,9 +6,15 @@ from buttons.buttons import (
     get_cancel_keyboard,
     get_type_buttons,
     get_user_buttons,
+    get_asking_buttons,
 )
 from data import (
+COMMENT,
+text,
+USER_STATE_ADDING_COMMENT,
+    SEND_REQUEST_MESSAGE,
     ADMIN_CANCEL_NOTIFICATION_MESSAGE,
+
     ADMIN_CANCEL_RECORD_MESSAGE,
     BOOKING_REQUEST_MESSAGE,
     CANCEL_OPERATION_MESSAGE,
@@ -56,7 +62,8 @@ from data import (
     USER_CANCEL_NOTIFICATION_MESSAGE,
     USER_NAME,
     USER_REJECTION_MESSAGE,
-    USER_REQUEST_MESSAGE,
+    USER_REQUEST_MESSAGE_WITH_COM,
+USER_REQUEST_MESSAGE_WITHOUT_COM,
     USER_STATE_ADDING_DATE,
     USER_STATE_CANCELING_RECORD,
     USER_STATES,
@@ -124,6 +131,9 @@ async def add_date_handler(update, context) -> None:
 
 async def cancel_handler(update, context) -> None:
     """Обрабатывает команду отмены."""
+    global text
+    text = ""
+
     chat_id = update.callback_query.message.chat.id
     query = update.callback_query
     await query.answer()
@@ -182,6 +192,9 @@ async def handle_date_input(update, context) -> None:
                 reply_markup=get_cancel_keyboard(),
             )
             return
+    elif USER_STATES.get(chat_id) == USER_STATE_ADDING_COMMENT:
+        await handle_comment_input(update, context)
+        await update.callback_query.message.delete()
     else:
         reply_markup = get_buttons_for_user(chat_id)
         await context.bot.send_message(
@@ -570,21 +583,73 @@ async def view_info(update, context):
 
 
 async def ask_date(update, context):
+    """Устанавливает состояние добавления комментария."""
+    user_id = update.callback_query.from_user.id
+    await update.callback_query.message.delete()
+    await context.bot.send_message(
+        chat_id=user_id,
+        text=SEND_REQUEST_MESSAGE,
+        reply_markup=get_asking_buttons(),
+    )
+    USER_STATES[user_id] = USER_STATE_ADDING_COMMENT
+
+
+
+async def handle_comment_input(update, context) -> None:
+    """Обрабатывает комментарий пользователя."""
+    user_id = update.message.from_user.id
+    if USER_STATES.get(user_id) == USER_STATE_ADDING_COMMENT:
+        await context.bot.delete_message(
+            chat_id=update.message.chat.id,
+            message_id=update.message.message_id
+        )
+        bot_message_id = context.user_data.get('bot_message_id')
+        if bot_message_id:
+            try:
+                await context.bot.delete_message(
+                    chat_id=update.message.chat.id,
+                    message_id=bot_message_id
+                )
+            except Exception as e:
+                print(f"Не удалось удалить сообщение бота: {e}")
+        global text
+        text += update.message.text + "\n"
+
+        await context.bot.send_message(
+            chat_id=user_id,
+            text=COMMENT.format(text=text),
+            reply_markup=get_asking_buttons(),
+        )
+
+
+
+async def send_handler(update, context) -> None:
     """Отправляет запрос администратору с просьбой добавить свободные даты."""
+    global text
     admin_id = ADMIN_IDS[0]
     username = update.callback_query.from_user.username
     user_id = update.callback_query.from_user.id
-    await context.bot.send_message(
-        chat_id=admin_id,
-        text=USER_REQUEST_MESSAGE.format(username=username),
-        reply_markup=get_buttons_for_user(admin_id),
-    )
+    await update.callback_query.message.delete()
+
+    USER_STATES[user_id] = None
+    if text:
+        await context.bot.send_message(
+            chat_id=admin_id,
+            text=USER_REQUEST_MESSAGE_WITH_COM.format(username=username, com=text),
+            reply_markup=get_buttons_for_user(admin_id),
+        )
+        text = ""
+    else:
+        await context.bot.send_message(
+            chat_id=admin_id,
+            text=USER_REQUEST_MESSAGE_WITHOUT_COM.format(username=username),
+            reply_markup=get_buttons_for_user(admin_id),
+        )
     await context.bot.send_message(
         chat_id=user_id,
         text=SUCCESS_REQUEST_MESSAGE,
         reply_markup=get_buttons_for_user(user_id),
     )
-
 
 async def get_dates_for_deleting(update, context):
     """Получаем кнопки для удаления даты."""

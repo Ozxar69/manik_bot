@@ -206,6 +206,7 @@ async def view_records(update, context) -> None:
     """
     chat_id = update.callback_query.message.chat.id
     reply_markup = get_buttons_for_user(chat_id)
+    await update.callback_query.message.delete()
 
     sorted_records = get_filtered_records()
 

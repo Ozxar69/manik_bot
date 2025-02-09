@@ -289,11 +289,7 @@ async def handle_booking(update, context) -> None:
     """Обрабатывает выбор даты от пользователя."""
     query = update.callback_query
     await query.answer()
-    await context.bot.edit_message_reply_markup(
-        chat_id=query.message.chat.id,
-        message_id=query.message.message_id,
-        reply_markup=None,
-    )
+    await update.callback_query.message.delete()
     chat_id = update.callback_query.message.chat.id
     selected_date = update.callback_query.data.split("_")[1]
 

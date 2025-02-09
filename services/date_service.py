@@ -182,7 +182,6 @@ def update_record(user_id: int, date, time):
         & (df[DATE_DATA] == date)
         & (df[TIME_DATA] == time)
     ]
-    print(record_exists)
     if record_exists.empty:
         return False
 

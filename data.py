@@ -163,6 +163,7 @@ CONFIRM_CANCELING = "Подтверждаете отмену?"
 SELECT_DELETING_DATE_MESSAGE = (
     "Пожалуйста выберите дату которую хотите убрать:\n"
 )
+SELECT_DELETING_DATE_MESSAGE_ERROR = "Нет доступных дат для удаления."
 
 ERROR_DELETE_MESSAGE = "Ошибка даты, обратитесь к разработчику."
 

@@ -141,3 +141,12 @@ def comfirm_canceling_record_buttons(data):
         ], cancel
     ]
     return InlineKeyboardMarkup(buttons)
+
+
+def get_deleting_date_buttons(available_dates):
+    keyboard = [
+        [InlineKeyboardButton(date, callback_data=f"delete|{date}")]
+        for date in available_dates
+    ]
+    keyboard.append(cancel)
+    return InlineKeyboardMarkup(keyboard)

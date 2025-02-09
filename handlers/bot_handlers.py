@@ -11,6 +11,7 @@ get_free_dates_buttons,
 get_cancel_user_records,
 get_cancel_admin_records,
 comfirm_canceling_record_buttons,
+get_deleting_date_buttons,
 )
 from data import (
 COMMENT,
@@ -18,7 +19,7 @@ text,
 USER_STATE_ADDING_COMMENT,
     SEND_REQUEST_MESSAGE,
     ADMIN_CANCEL_NOTIFICATION_MESSAGE,
-
+SELECT_DELETING_DATE_MESSAGE_ERROR,
     ADMIN_CANCEL_RECORD_MESSAGE,
     BOOKING_REQUEST_MESSAGE,
     CANCEL_OPERATION_MESSAGE,
@@ -363,7 +364,7 @@ async def confirm_booking(update, context) -> None:
     name = data[3]
     service_type = data[4]
 
-    reply_markup = get_buttons_for_user(user_id)
+    # reply_markup = get_buttons_for_user(user_id)
 
     book_date_in_file(selected_date, user_id, name, service_type)
 
@@ -372,7 +373,7 @@ async def confirm_booking(update, context) -> None:
         text=CONFIRMED_MESSAGE_FOR_USER.format(
             type=service_type, date=selected_date
         ),
-        reply_markup=reply_markup
+        # reply_markup=reply_markup
     )
     await query.message.edit_text(text=CONFIRMED_MESSAGE)
 
@@ -593,7 +594,7 @@ async def send_handler(update, context) -> None:
         await context.bot.send_message(
             chat_id=admin_id,
             text=USER_REQUEST_MESSAGE_WITH_COM.format(username=username, com=text),
-            reply_markup=get_buttons_for_user(admin_id),
+            # reply_markup=get_buttons_for_user(admin_id),
         )
         text = ""
     else:
@@ -611,19 +612,23 @@ async def send_handler(update, context) -> None:
 async def get_dates_for_deleting(update, context):
     """Получаем кнопки для удаления даты."""
     chat_id = update.callback_query.from_user.id
+    await update.callback_query.message.delete()
     available_dates = get_available_dates()
+    if available_dates:
+        reply_markup = get_deleting_date_buttons(available_dates)
 
-    keyboard = [
-        [InlineKeyboardButton(date, callback_data=f"delete|{date}")]
-        for date in available_dates
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-
-    await context.bot.send_message(
-        chat_id=chat_id,
-        text=SELECT_DELETING_DATE_MESSAGE,
-        reply_markup=reply_markup,
-    )
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=SELECT_DELETING_DATE_MESSAGE,
+            reply_markup=reply_markup,
+        )
+    else:
+        reply_markup=get_buttons_for_user(chat_id)
+        await context.bot.send_message(
+            chat_id=chat_id,
+            text=SELECT_DELETING_DATE_MESSAGE_ERROR,
+            reply_markup=reply_markup,
+        )
 
 
 async def delete_dates(update, context):
@@ -631,11 +636,7 @@ async def delete_dates(update, context):
     chat_id = update.callback_query.from_user.id
     query = update.callback_query
     await query.answer()
-    await context.bot.edit_message_reply_markup(
-        chat_id=query.message.chat.id,
-        message_id=query.message.message_id,
-        reply_markup=None,
-    )
+    await update.callback_query.message.delete()
     data = update.callback_query.data.split("|")
     delete = delete_date(data[1])
     if delete is False:

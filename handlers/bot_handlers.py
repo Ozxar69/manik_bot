@@ -7,6 +7,7 @@ from buttons.buttons import (
     get_type_buttons,
     get_user_buttons,
     get_asking_buttons,
+get_free_dates_buttons,
 )
 from data import (
 COMMENT,
@@ -146,9 +147,8 @@ async def cancel_handler(update, context) -> None:
             chat_id=chat_id, text=CANCEL_OPERATION_MESSAGE
         )
     else:
-        await context.bot.send_message(
-            chat_id=chat_id, text=NO_ACTIVE_OPERATION_MESSAGE
-        )
+        await update.callback_query.answer(NO_ACTIVE_OPERATION_MESSAGE)
+
 
     reply_markup = get_buttons_for_user(chat_id)
 
@@ -242,6 +242,7 @@ async def view_free_records(update, context) -> None:
     reply_markup = get_buttons_for_user(chat_id)
 
     sorted_records = get_filtered_records()
+    await update.callback_query.message.delete()
 
     free_records = sorted_records[sorted_records[CONFIRMATION_DATA].isnull()]
 
@@ -265,6 +266,7 @@ async def book_date(update, context) -> None:
     """Запрашивает у пользователя выбор свободной даты."""
     chat_id = update.callback_query.message.chat.id
     available_dates = get_available_dates()
+    await update.callback_query.message.delete()
 
     if not available_dates:
         reply_markup = get_buttons_for_user(chat_id)
@@ -274,12 +276,7 @@ async def book_date(update, context) -> None:
             reply_markup=reply_markup,
         )
         return
-
-    keyboard = [
-        [InlineKeyboardButton(date, callback_data=f"book_{date}")]
-        for date in available_dates
-    ]
-    reply_markup = InlineKeyboardMarkup(keyboard)
+    reply_markup = get_free_dates_buttons(available_dates)
 
     await context.bot.send_message(
         chat_id=chat_id,

@@ -85,3 +85,12 @@ def get_asking_buttons():
     buttons = [[InlineKeyboardButton("Отправить запрос", callback_data="send_handler")],
                cancel]
     return InlineKeyboardMarkup(buttons)
+
+
+def get_free_dates_buttons(available_dates):
+    keyboard = [
+        [InlineKeyboardButton(date, callback_data=f"book_{date}")]
+        for date in available_dates
+    ]
+    keyboard.append(cancel)
+    return InlineKeyboardMarkup(keyboard)

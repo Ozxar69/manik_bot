@@ -100,14 +100,14 @@ def get_available_dates():
     available_dates = df[df[CONFIRMATION_DATA].isnull()].copy()
 
     # Используем .loc для изменения оригинального DataFrame
-    available_dates['DATETIME'] = pd.to_datetime(
+    available_dates["DATETIME"] = pd.to_datetime(
         available_dates[DATE_DATA] + " " + available_dates[TIME_DATA],
-        format=DATE_TIME_FORMAT
+        format=DATE_TIME_FORMAT,
     )
     CURRENT_DATETIME = get_current_time()
     available_dates = available_dates[
-        available_dates['DATETIME'] > CURRENT_DATETIME
-        ]
+        available_dates["DATETIME"] > CURRENT_DATETIME
+    ]
 
     available_dates[DATE_TIME_DATA] = pd.to_datetime(
         available_dates[DATE_DATA] + " " + available_dates[TIME_DATA],

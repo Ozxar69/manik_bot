@@ -1,5 +1,6 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from data import CANCEL_RECORD_BUTTON_TEXT, YES_BUTTON, NO_BUTTON
+
+from data import CANCEL_RECORD_BUTTON_TEXT, NO_BUTTON, YES_BUTTON
 
 cancel = [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
 
@@ -70,21 +71,30 @@ def get_cancel_keyboard():
 
 def get_type_buttons():
     """Создает кнопки для выбора типа услуг."""
-    buttons = [[
-        InlineKeyboardButton(
-            "💅 Маникюр", callback_data="service_manicure"
-        ),
-        InlineKeyboardButton(
-            "🦶 Педикюр", callback_data="service_pedicure"
-        ),
-        InlineKeyboardButton("🌟 Брови", callback_data="service_brows"),
-    ], cancel]
+    buttons = [
+        [
+            InlineKeyboardButton(
+                "💅 Маникюр", callback_data="service_manicure"
+            ),
+            InlineKeyboardButton(
+                "🦶 Педикюр", callback_data="service_pedicure"
+            ),
+            InlineKeyboardButton("🌟 Брови", callback_data="service_brows"),
+        ],
+        cancel,
+    ]
     return InlineKeyboardMarkup(buttons)
 
 
 def get_asking_buttons():
-    buttons = [[InlineKeyboardButton("Отправить запрос", callback_data="send_handler")],
-               cancel]
+    buttons = [
+        [
+            InlineKeyboardButton(
+                "Отправить запрос", callback_data="send_handler"
+            )
+        ],
+        cancel,
+    ]
     return InlineKeyboardMarkup(buttons)
 
 
@@ -98,13 +108,18 @@ def get_free_dates_buttons(available_dates):
 
 
 def get_cancel_user_records(records):
-    buttons = [[
-        InlineKeyboardButton(
-            CANCEL_RECORD_BUTTON_TEXT.format(type=type, date=date, time=time),
-            callback_data=f"confirm_cancel_{date}_{time}",
-        )
-        for date, time, type in records
-    ], cancel]
+    buttons = [
+        [
+            InlineKeyboardButton(
+                CANCEL_RECORD_BUTTON_TEXT.format(
+                    type=type, date=date, time=time
+                ),
+                callback_data=f"confirm_cancel_{date}_{time}",
+            )
+            for date, time, type in records
+        ],
+        cancel,
+    ]
     reply_markup = InlineKeyboardMarkup([button for button in buttons])
 
     return reply_markup
@@ -132,13 +147,14 @@ def comfirm_canceling_record_buttons(data):
             InlineKeyboardButton(
                 YES_BUTTON,
                 callback_data=f"handle_admin_cancel_record|{data[1]}"
-                              f"|{data[2]}|{data[3]}",
+                f"|{data[2]}|{data[3]}",
             ),
             InlineKeyboardButton(
                 NO_BUTTON,
                 callback_data="cancel",
             ),
-        ], cancel
+        ],
+        cancel,
     ]
     return InlineKeyboardMarkup(buttons)
 

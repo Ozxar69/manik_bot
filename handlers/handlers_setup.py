@@ -22,20 +22,18 @@ from handlers.bot_handlers import (
     handle_date_input,
     handle_service_choice,
     request_confirm_admin_cancel_record,
+    send_handler,
     view_free_records,
     view_info,
     view_personal_records,
     view_records,
     wake_up,
-send_handler,
 )
 
 
 def setup_handlers(application) -> None:
     """Настраивает обработчики команд и сообщений для бота."""
-    application.add_handler(
-        CommandHandler("start", wake_up)
-    )
+    application.add_handler(CommandHandler("start", wake_up))
 
     application.add_handler(
         CallbackQueryHandler(add_date_handler, pattern="^add_date$")
@@ -111,9 +109,12 @@ def setup_handlers(application) -> None:
         CallbackQueryHandler(view_info, pattern="full_info")
     )
     application.add_handler(
-        CallbackQueryHandler(send_handler, pattern="send_handler"))
+        CallbackQueryHandler(send_handler, pattern="send_handler")
+    )
     application.add_handler(
-        CallbackQueryHandler(ask_date, pattern="^ask_date$"))
+        CallbackQueryHandler(ask_date, pattern="^ask_date$")
+    )
 
     application.add_handler(
-        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_date_input))
+        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_date_input)
+    )

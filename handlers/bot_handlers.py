@@ -2,34 +2,30 @@ import pandas as pd
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from buttons.buttons import (
+    comfirm_canceling_record_buttons,
     get_admin_buttons,
+    get_asking_buttons,
+    get_cancel_admin_records,
     get_cancel_keyboard,
+    get_cancel_user_records,
+    get_deleting_date_buttons,
+    get_free_dates_buttons,
     get_type_buttons,
     get_user_buttons,
-    get_asking_buttons,
-get_free_dates_buttons,
-get_cancel_user_records,
-get_cancel_admin_records,
-comfirm_canceling_record_buttons,
-get_deleting_date_buttons,
 )
 from data import (
-COMMENT,
-text,
-USER_STATE_ADDING_COMMENT,
-    SEND_REQUEST_MESSAGE,
     ADMIN_CANCEL_NOTIFICATION_MESSAGE,
-SELECT_DELETING_DATE_MESSAGE_ERROR,
     ADMIN_CANCEL_RECORD_MESSAGE,
     BOOKING_REQUEST_MESSAGE,
     CANCEL_OPERATION_MESSAGE,
     CANCEL_QUESTION_PROMPT_MESSAGE,
-    CANCEL_RECORD_BUTTON_TEXT,
     CANCEL_RECORD_PROMPT_MESSAGE,
+    COMMENT,
     CONFIRM_CANCELING,
     CONFIRMATION_DATA,
     CONFIRMATION_RECEIVED,
     CONFIRMED_MESSAGE,
+    CONFIRMED_MESSAGE_FOR_USER,
     DATE_DATA,
     DATE_FORMAT,
     DATE_REQUEST_MESSAGE,
@@ -55,8 +51,10 @@ SELECT_DELETING_DATE_MESSAGE_ERROR,
     SELECT_COMMAND_MESSAGE,
     SELECT_DATE_MESSAGE,
     SELECT_DELETING_DATE_MESSAGE,
+    SELECT_DELETING_DATE_MESSAGE_ERROR,
     SELECTED_DATE,
     SELECTED_DATE_MESSAGE,
+    SEND_REQUEST_MESSAGE,
     SERVICE_NAMES,
     SUCCESS_DELETE_MESSAGE,
     SUCCESS_REQUEST_MESSAGE,
@@ -68,7 +66,8 @@ SELECT_DELETING_DATE_MESSAGE_ERROR,
     USER_NAME,
     USER_REJECTION_MESSAGE,
     USER_REQUEST_MESSAGE_WITH_COM,
-USER_REQUEST_MESSAGE_WITHOUT_COM,
+    USER_REQUEST_MESSAGE_WITHOUT_COM,
+    USER_STATE_ADDING_COMMENT,
     USER_STATE_ADDING_DATE,
     USER_STATE_CANCELING_RECORD,
     USER_STATES,
@@ -79,7 +78,7 @@ USER_REQUEST_MESSAGE_WITHOUT_COM,
     WELCOME_MESSAGE_ADMIN,
     WELCOME_MESSAGE_USER,
     YES_BUTTON,
-CONFIRMED_MESSAGE_FOR_USER,
+    text,
 )
 from services.date_service import (
     add_date,
@@ -152,7 +151,6 @@ async def cancel_handler(update, context) -> None:
         )
     else:
         await update.callback_query.answer(NO_ACTIVE_OPERATION_MESSAGE)
-
 
     reply_markup = get_buttons_for_user(chat_id)
 
@@ -322,7 +320,6 @@ async def handle_service_choice(update, context):
     user_id = query.from_user.id
     username = query.from_user.username
 
-
     service_name = SERVICE_NAMES.get(chosen_service, UNKNOWN_SERVICE)
 
     admin_id = ADMIN_IDS[0]
@@ -349,7 +346,7 @@ async def handle_service_choice(update, context):
     await context.bot.send_message(
         chat_id=query.message.chat.id,
         text=BOOKING_REQUEST_MESSAGE,
-        reply_markup=get_user_buttons()
+        reply_markup=get_user_buttons(),
     )
 
 
@@ -384,9 +381,7 @@ async def deny_booking(update, context) -> None:
     await query.answer()
     user_id = query.data.split("|")[1]
 
-    await query.message.edit_text(
-        text=REJECTION_MESSAGE
-    )
+    await query.message.edit_text(text=REJECTION_MESSAGE)
 
     reply_markup = get_buttons_for_user(user_id)
     await context.bot.send_message(
@@ -407,7 +402,7 @@ async def view_personal_records(update, context) -> None:
         await context.bot.send_message(
             chat_id=update.callback_query.message.chat.id,
             text=NO_RECORDS_MESSAGE,
-            reply_markup=reply_markup
+            reply_markup=reply_markup,
         )
         return
 
@@ -433,7 +428,7 @@ async def cancel_record(update, context) -> None:
         await context.bot.send_message(
             chat_id=update.callback_query.message.chat.id,
             text=NO_RECORDS_TO_CANCEL_MESSAGE,
-            reply_markup=reply_markup
+            reply_markup=reply_markup,
         )
         return
 
@@ -455,8 +450,6 @@ async def confirm_cancel_record(update, context) -> None:
     time = data[3]
     await update.callback_query.message.delete()
     update_record(user_id, date, time)
-
-
 
     await update.callback_query.answer()
     reply_markup = get_user_buttons()
@@ -484,7 +477,9 @@ async def handle_admin_cancel_date(update, context):
     upcoming_records = get_upcoming_records()
     reply_markup = get_admin_buttons()
     if not upcoming_records:
-        await query.message.reply_text(NO_UPCOMING_RECORDS_MESSAGE, reply_markup=reply_markup)
+        await query.message.reply_text(
+            NO_UPCOMING_RECORDS_MESSAGE, reply_markup=reply_markup
+        )
         return
 
     reply_markup = get_cancel_admin_records(upcoming_records)
@@ -544,13 +539,15 @@ async def ask_date(update, context):
     """Устанавливает состояние добавления комментария."""
     user_id = update.callback_query.from_user.id
     await update.callback_query.message.delete()
-    await context.bot.send_message(
+
+    sent_message = await context.bot.send_message(
         chat_id=user_id,
         text=SEND_REQUEST_MESSAGE,
         reply_markup=get_asking_buttons(),
     )
-    USER_STATES[user_id] = USER_STATE_ADDING_COMMENT
+    context.user_data['bot_message_id'] = sent_message.message_id
 
+    USER_STATES[user_id] = USER_STATE_ADDING_COMMENT
 
 
 async def handle_comment_input(update, context) -> None:
@@ -558,8 +555,7 @@ async def handle_comment_input(update, context) -> None:
     user_id = update.message.from_user.id
     if USER_STATES.get(user_id) == USER_STATE_ADDING_COMMENT:
         await context.bot.delete_message(
-            chat_id=update.message.chat.id,
-            message_id=update.message.message_id
+            chat_id=update.message.chat.id, message_id=update.message.message_id
         )
         bot_message_id = context.user_data.get('bot_message_id')
         if bot_message_id:
@@ -580,7 +576,6 @@ async def handle_comment_input(update, context) -> None:
         )
 
 
-
 async def send_handler(update, context) -> None:
     """Отправляет запрос администратору с просьбой добавить свободные даты."""
     global text
@@ -593,7 +588,9 @@ async def send_handler(update, context) -> None:
     if text:
         await context.bot.send_message(
             chat_id=admin_id,
-            text=USER_REQUEST_MESSAGE_WITH_COM.format(username=username, com=text),
+            text=USER_REQUEST_MESSAGE_WITH_COM.format(
+                username=username, com=text
+            ),
             # reply_markup=get_buttons_for_user(admin_id),
         )
         text = ""
@@ -609,6 +606,7 @@ async def send_handler(update, context) -> None:
         reply_markup=get_buttons_for_user(user_id),
     )
 
+
 async def get_dates_for_deleting(update, context):
     """Получаем кнопки для удаления даты."""
     chat_id = update.callback_query.from_user.id
@@ -623,7 +621,7 @@ async def get_dates_for_deleting(update, context):
             reply_markup=reply_markup,
         )
     else:
-        reply_markup=get_buttons_for_user(chat_id)
+        reply_markup = get_buttons_for_user(chat_id)
         await context.bot.send_message(
             chat_id=chat_id,
             text=SELECT_DELETING_DATE_MESSAGE_ERROR,

@@ -138,11 +138,7 @@ async def cancel_handler(update, context) -> None:
     chat_id = update.callback_query.message.chat.id
     query = update.callback_query
     await query.answer()
-    await context.bot.edit_message_reply_markup(
-        chat_id=query.message.chat.id,
-        message_id=query.message.message_id,
-        reply_markup=None,
-    )
+    await update.callback_query.message.delete()
 
     if USER_STATES.get(chat_id) is not None:
         USER_STATES[chat_id] = None

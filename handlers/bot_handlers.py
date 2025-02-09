@@ -8,6 +8,8 @@ from buttons.buttons import (
     get_user_buttons,
     get_asking_buttons,
 get_free_dates_buttons,
+get_cancel_user_records,
+get_cancel_admin_records,
 )
 from data import (
 COMMENT,
@@ -305,6 +307,7 @@ async def handle_booking(update, context) -> None:
 async def handle_service_choice(update, context):
     """Обработчик выбора типа услуги."""
     query = update.callback_query
+    await update.callback_query.message.delete()
     await query.answer()
 
     chosen_service = query.data.split("_")[1]
@@ -316,6 +319,7 @@ async def handle_service_choice(update, context):
 
     user_id = query.from_user.id
     username = query.from_user.username
+
 
     service_name = SERVICE_NAMES.get(chosen_service, UNKNOWN_SERVICE)
 
@@ -340,15 +344,10 @@ async def handle_service_choice(update, context):
         reply_markup=reply_markup,
     )
 
-    await context.bot.edit_message_reply_markup(
-        chat_id=query.message.chat.id,
-        message_id=query.message.message_id,
-        reply_markup=None,
-    )
-
     await context.bot.send_message(
         chat_id=query.message.chat.id,
         text=BOOKING_REQUEST_MESSAGE,
+        reply_markup=get_user_buttons()
     )
 
 
@@ -374,19 +373,17 @@ async def confirm_booking(update, context) -> None:
         ),
         reply_markup=reply_markup
     )
-    await query.message.edit_text(text=CONFIRMED_MESSAGE, reply_markup=None)
+    await query.message.edit_text(text=CONFIRMED_MESSAGE)
 
 
 async def deny_booking(update, context) -> None:
     """Обрабатывает отклонение бронирования пользователем."""
     query = update.callback_query
-    chat_id = update.callback_query.message.chat.id
     await query.answer()
-    reply_markup = get_buttons_for_user(chat_id)
     user_id = query.data.split("|")[1]
 
     await query.message.edit_text(
-        text=REJECTION_MESSAGE, reply_markup=reply_markup
+        text=REJECTION_MESSAGE
     )
 
     reply_markup = get_buttons_for_user(user_id)
@@ -402,11 +399,13 @@ async def view_personal_records(update, context) -> None:
     user_id = update.callback_query.from_user.id
     records = get_user_records(user_id)
     reply_markup = get_buttons_for_user(user_id)
+    await update.callback_query.message.delete()
 
     if records is None or len(records) == 0:
         await context.bot.send_message(
             chat_id=update.callback_query.message.chat.id,
             text=NO_RECORDS_MESSAGE,
+            reply_markup=reply_markup
         )
         return
 
@@ -426,6 +425,7 @@ async def cancel_record(update, context) -> None:
     """Отменяет запись пользователя."""
     user_id = update.callback_query.from_user.id
     records = get_user_records(user_id)
+    await update.callback_query.message.delete()
 
     if records is None or len(records) == 0:
         await context.bot.send_message(
@@ -434,14 +434,7 @@ async def cancel_record(update, context) -> None:
         )
         return
 
-    buttons = [
-        InlineKeyboardButton(
-            CANCEL_RECORD_BUTTON_TEXT.format(type=type, date=date, time=time),
-            callback_data=f"confirm_cancel_{date}_{time}",
-        )
-        for date, time, type in records
-    ]
-    reply_markup = InlineKeyboardMarkup([[button] for button in buttons])
+    reply_markup = get_cancel_user_records(records)
 
     await context.bot.send_message(
         chat_id=update.callback_query.message.chat.id,
@@ -457,12 +450,12 @@ async def confirm_cancel_record(update, context) -> None:
     data = update.callback_query.data.split("_")
     date = data[2]
     time = data[3]
+    await update.callback_query.message.delete()
 
     update_record(user_id, date, time)
 
     await update.callback_query.answer()
     reply_markup = get_user_buttons()
-    await update.callback_query.edit_message_reply_markup(reply_markup=None)
 
     await context.bot.send_message(
         chat_id=update.callback_query.message.chat.id,
@@ -482,26 +475,15 @@ async def handle_admin_cancel_date(update, context):
     """Обработчик для кнопки отмены записи администратором."""
     query = update.callback_query
     await query.answer()
+    await update.callback_query.message.delete()
 
     upcoming_records = get_upcoming_records()
-
+    reply_markup = get_admin_buttons()
     if not upcoming_records:
-        await query.message.reply_text(NO_UPCOMING_RECORDS_MESSAGE)
+        await query.message.reply_text(NO_UPCOMING_RECORDS_MESSAGE, reply_markup=reply_markup)
         return
 
-    buttons = []
-    for record in upcoming_records:
-        date, time, name, service_type, id = record
-        button_text = f"{date} в {time} - {name} ({service_type})"
-        buttons.append(
-            [
-                InlineKeyboardButton(
-                    button_text, callback_data=f"cancel|{date}|{time}|{id}"
-                )
-            ]
-        )
-
-    reply_markup = InlineKeyboardMarkup(buttons)
+    reply_markup = get_cancel_admin_records(upcoming_records)
     await query.message.reply_text(
         CANCEL_QUESTION_PROMPT_MESSAGE, reply_markup=reply_markup
     )

@@ -1,6 +1,8 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-
+from data import CANCEL_RECORD_BUTTON_TEXT
 cancel = [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
+
+
 def get_admin_buttons():
     """Создает администраторские кнопки."""
     buttons = [
@@ -92,3 +94,32 @@ def get_free_dates_buttons(available_dates):
     ]
     keyboard.append(cancel)
     return InlineKeyboardMarkup(keyboard)
+
+
+def get_cancel_user_records(records):
+    buttons = [[
+        InlineKeyboardButton(
+            CANCEL_RECORD_BUTTON_TEXT.format(type=type, date=date, time=time),
+            callback_data=f"confirm_cancel_{date}_{time}",
+        )
+        for date, time, type in records
+    ], cancel]
+    reply_markup = InlineKeyboardMarkup([button for button in buttons])
+
+    return reply_markup
+
+
+def get_cancel_admin_records(upcoming_records):
+    buttons = []
+    for record in upcoming_records:
+        date, time, name, service_type, id = record
+        button_text = f"{date} в {time} - {name} ({service_type})"
+        buttons.append(
+            [
+                InlineKeyboardButton(
+                    button_text, callback_data=f"cancel|{date}|{time}|{id}"
+                )
+            ]
+        )
+    buttons.append(cancel)
+    return InlineKeyboardMarkup(buttons)

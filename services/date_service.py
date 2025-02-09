@@ -173,15 +173,16 @@ def get_user_records(user_id):
     )
 
 
-def update_record(user_id, date, time):
+def update_record(user_id: int, date, time):
     """Обновляет запись пользователя в CSV файле."""
     df = pd.read_csv(DATA_FILE)
-
+    user_id = int(user_id)
     record_exists = df[
         (df[ID_DATA] == user_id)
         & (df[DATE_DATA] == date)
         & (df[TIME_DATA] == time)
     ]
+    print(record_exists)
     if record_exists.empty:
         return False
 

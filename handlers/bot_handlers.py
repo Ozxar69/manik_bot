@@ -10,6 +10,7 @@ from buttons.buttons import (
 get_free_dates_buttons,
 get_cancel_user_records,
 get_cancel_admin_records,
+comfirm_canceling_record_buttons,
 )
 from data import (
 COMMENT,
@@ -426,11 +427,12 @@ async def cancel_record(update, context) -> None:
     user_id = update.callback_query.from_user.id
     records = get_user_records(user_id)
     await update.callback_query.message.delete()
-
+    reply_markup = get_buttons_for_user(user_id)
     if records is None or len(records) == 0:
         await context.bot.send_message(
             chat_id=update.callback_query.message.chat.id,
             text=NO_RECORDS_TO_CANCEL_MESSAGE,
+            reply_markup=reply_markup
         )
         return
 
@@ -451,8 +453,9 @@ async def confirm_cancel_record(update, context) -> None:
     date = data[2]
     time = data[3]
     await update.callback_query.message.delete()
-
     update_record(user_id, date, time)
+
+
 
     await update.callback_query.answer()
     reply_markup = get_user_buttons()
@@ -494,26 +497,9 @@ async def request_confirm_admin_cancel_record(update, context):
     query = update.callback_query
     await query.answer()
     data = update.callback_query.data.split("|")
-    await context.bot.edit_message_reply_markup(
-        chat_id=query.message.chat.id,
-        message_id=query.message.message_id,
-        reply_markup=None,
-    )
+    await update.callback_query.message.delete()
     USER_STATES[ADMIN_IDS[0]] = USER_STATE_CANCELING_RECORD
-    buttons = [
-        [
-            InlineKeyboardButton(
-                YES_BUTTON,
-                callback_data=f"handle_admin_cancel_record|{data[1]}"
-                f"|{data[2]}|{data[3]}",
-            ),
-            InlineKeyboardButton(
-                NO_BUTTON,
-                callback_data="cancel",
-            ),
-        ]
-    ]
-    reply_markup = InlineKeyboardMarkup(buttons)
+    reply_markup = comfirm_canceling_record_buttons(data)
     await query.message.reply_text(CONFIRM_CANCELING, reply_markup=reply_markup)
 
 
@@ -521,13 +507,11 @@ async def handle_admin_cancel_record(update, context):
     """Обработчик для отмены записи по выбранной дате администратором."""
     query = update.callback_query
     await query.answer()
-    await context.bot.edit_message_reply_markup(
-        chat_id=query.message.chat.id,
-        message_id=query.message.message_id,
-        reply_markup=None,
-    )
+    await update.callback_query.message.delete()
     data = update.callback_query.data.split("|")
-    update_record(int(data[3]), data[1], data[2])
+    if data[2].startswith("0"):
+        data[2] = data[2][1:]
+    update_record(data[3], data[1], data[2])
     USER_STATES[ADMIN_IDS[0]] = None
 
     await context.bot.send_message(
@@ -546,6 +530,7 @@ async def handle_admin_cancel_record(update, context):
 async def view_info(update, context):
     """Отправляет сообщение с текстом об услугах и другой информации."""
     chat_id = update.callback_query.from_user.id
+    await update.callback_query.message.delete()
     chat_message = TEXT_INFO + URL_INFO
     await context.bot.send_message(
         chat_id=chat_id,

@@ -1,5 +1,6 @@
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
-from data import CANCEL_RECORD_BUTTON_TEXT
+from data import CANCEL_RECORD_BUTTON_TEXT, YES_BUTTON, NO_BUTTON
+
 cancel = [InlineKeyboardButton("❌ Отмена", callback_data="cancel")]
 
 
@@ -122,4 +123,21 @@ def get_cancel_admin_records(upcoming_records):
             ]
         )
     buttons.append(cancel)
+    return InlineKeyboardMarkup(buttons)
+
+
+def comfirm_canceling_record_buttons(data):
+    buttons = [
+        [
+            InlineKeyboardButton(
+                YES_BUTTON,
+                callback_data=f"handle_admin_cancel_record|{data[1]}"
+                              f"|{data[2]}|{data[3]}",
+            ),
+            InlineKeyboardButton(
+                NO_BUTTON,
+                callback_data="cancel",
+            ),
+        ], cancel
+    ]
     return InlineKeyboardMarkup(buttons)

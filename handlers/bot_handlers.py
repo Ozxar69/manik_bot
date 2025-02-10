@@ -126,12 +126,16 @@ async def add_date_handler(update, context) -> None:
     """Запрашивает у пользователя ввод даты и времени."""
     chat_id = update.callback_query.message.chat.id
     await update.callback_query.message.delete()
+
     USER_STATES[chat_id] = USER_STATE_ADDING_DATE
-    await context.bot.send_message(
+
+    sent_message = await context.bot.send_message(
         chat_id=chat_id,
         text=DATE_REQUEST_MESSAGE,
         reply_markup=get_cancel_keyboard(),
     )
+
+    context.user_data["last_bot_message_id"] = sent_message.message_id
 
 
 async def cancel_handler(update, context) -> None:
@@ -146,8 +150,9 @@ async def cancel_handler(update, context) -> None:
 
     if USER_STATES.get(chat_id) is not None:
         USER_STATES[chat_id] = None
-        await context.bot.send_message(
-            chat_id=chat_id, text=CANCEL_OPERATION_MESSAGE
+        await update.callback_query.answer(
+            text=CANCEL_OPERATION_MESSAGE,
+            show_alert=True
         )
     else:
         await update.callback_query.answer(NO_ACTIVE_OPERATION_MESSAGE)
@@ -163,6 +168,16 @@ async def handle_date_input(update, context) -> None:
     """Обрабатывает ввод даты и времени от пользователя."""
     chat_id = update.message.chat.id
 
+    # Удаляем предыдущее сообщение бота, если оно есть
+    if "last_bot_message_id" in context.user_data:
+        try:
+            await context.bot.delete_message(
+                chat_id=chat_id,
+                message_id=context.user_data["last_bot_message_id"],
+            )
+        except Exception as e:
+            print(f"Не удалось удалить сообщение: {e}")
+
     if USER_STATES.get(chat_id) == USER_STATE_ADDING_DATE:
         date_time = update.message.text
 
@@ -171,35 +186,46 @@ async def handle_date_input(update, context) -> None:
             result_message = add_date(date_str, time_str)
 
             if ERROR_MESSAGE in result_message:
-                await context.bot.send_message(
+                # Отправляем новое сообщение и сохраняем его ID
+                sent_message = await context.bot.send_message(
                     chat_id=chat_id,
                     text=result_message,
                     reply_markup=get_cancel_keyboard(),
                 )
+                context.user_data["last_bot_message_id"] = sent_message.message_id
                 return
 
-            await context.bot.send_message(
+            reply_markup = get_buttons_for_user(chat_id)
+            # Отправляем новое сообщение и сохраняем его ID
+            sent_message = await context.bot.send_message(
                 chat_id=chat_id,
                 text=result_message,
-                reply_markup=get_cancel_keyboard(),
+                reply_markup=reply_markup,
             )
+            context.user_data["last_bot_message_id"] = sent_message.message_id
             USER_STATES[chat_id] = None
+
         except ValueError:
-            await context.bot.send_message(
+            # Отправляем новое сообщение и сохраняем его ID
+            sent_message = await context.bot.send_message(
                 chat_id=chat_id,
                 text=DATE_TIME_FORMAT_ERROR_MESSAGE,
                 reply_markup=get_cancel_keyboard(),
             )
+            context.user_data["last_bot_message_id"] = sent_message.message_id
             return
+
     elif USER_STATES.get(chat_id) == USER_STATE_ADDING_COMMENT:
         await handle_comment_input(update, context)
     else:
         reply_markup = get_buttons_for_user(chat_id)
-        await context.bot.send_message(
+        # Отправляем новое сообщение и сохраняем его ID
+        sent_message = await context.bot.send_message(
             chat_id=chat_id,
             text=SELECT_COMMAND_MESSAGE,
             reply_markup=reply_markup,
         )
+        context.user_data["last_bot_message_id"] = sent_message.message_id
 
 
 async def view_records(update, context) -> None:

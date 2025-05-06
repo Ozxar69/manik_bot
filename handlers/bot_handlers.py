@@ -1,4 +1,3 @@
-import pandas as pd
 from telegram import InlineKeyboardButton, InlineKeyboardMarkup
 
 from buttons.buttons import (
@@ -22,19 +21,15 @@ from data import (
     CANCEL_RECORD_PROMPT_MESSAGE,
     COMMENT,
     CONFIRM_CANCELING,
-    CONFIRMATION_DATA,
-    CONFIRMATION_RECEIVED,
     CONFIRMED_MESSAGE,
     CONFIRMED_MESSAGE_FOR_USER,
-    DATE_DATA,
-    DATE_FORMAT,
     DATE_REQUEST_MESSAGE,
     DATE_TIME_FORMAT_ERROR_MESSAGE,
     ERROR_DATE_MESSAGE,
     ERROR_DELETE_MESSAGE,
-    ERROR_MESSAGE,
     FREE_RECORDS_HEADER_MESSAGE,
     GET_USERNAME_MESSAGE,
+    LAST_BOT_MESSAGE_ID,
     NO_ACTIVE_OPERATION_MESSAGE,
     NO_AVAILABLE_DATES_MESSAGE,
     NO_BUTTON,
@@ -43,7 +38,6 @@ from data import (
     NO_RECORDS_TO_CANCEL_MESSAGE,
     NO_UPCOMING_RECORDS_MESSAGE,
     RECORD_CANCELLED_MESSAGE,
-    RECORD_TYPE,
     RECORDS_HEADER_MESSAGE,
     RECORDS_MESSAGE_TEMPLATE,
     REJECTION_MESSAGE,
@@ -57,13 +51,12 @@ from data import (
     SEND_REQUEST_MESSAGE,
     SERVICE_NAMES,
     SUCCESS_DELETE_MESSAGE,
+    SUCCESS_MESSAGE,
     SUCCESS_REQUEST_MESSAGE,
     TEXT_INFO,
-    TIME_DATA,
     UNKNOWN_SERVICE,
     URL_INFO,
     USER_CANCEL_NOTIFICATION_MESSAGE,
-    USER_NAME,
     USER_REJECTION_MESSAGE,
     USER_REQUEST_MESSAGE_WITH_COM,
     USER_REQUEST_MESSAGE_WITHOUT_COM,
@@ -80,7 +73,7 @@ from data import (
     YES_BUTTON,
     text,
 )
-from services.date_service import (
+from services.data_service_sql import (
     add_date,
     book_date_in_file,
     delete_date,
@@ -88,7 +81,6 @@ from services.date_service import (
     get_filtered_records,
     get_upcoming_records,
     get_user_records,
-    update_record,
 )
 from user_type import ADMIN_IDS, get_buttons_for_user, is_admin
 
@@ -135,7 +127,7 @@ async def add_date_handler(update, context) -> None:
         reply_markup=get_cancel_keyboard(),
     )
 
-    context.user_data["last_bot_message_id"] = sent_message.message_id
+    context.user_data[LAST_BOT_MESSAGE_ID] = sent_message.message_id
 
 
 async def cancel_handler(update, context) -> None:
@@ -151,8 +143,7 @@ async def cancel_handler(update, context) -> None:
     if USER_STATES.get(chat_id) is not None:
         USER_STATES[chat_id] = None
         await update.callback_query.answer(
-            text=CANCEL_OPERATION_MESSAGE,
-            show_alert=True
+            text=CANCEL_OPERATION_MESSAGE, show_alert=True
         )
     else:
         await update.callback_query.answer(NO_ACTIVE_OPERATION_MESSAGE)
@@ -169,7 +160,7 @@ async def handle_date_input(update, context) -> None:
     chat_id = update.message.chat.id
 
     # Удаляем предыдущее сообщение бота, если оно есть
-    if "last_bot_message_id" in context.user_data:
+    if LAST_BOT_MESSAGE_ID in context.user_data:
         try:
             await context.bot.delete_message(
                 chat_id=chat_id,
@@ -182,27 +173,29 @@ async def handle_date_input(update, context) -> None:
         date_time = update.message.text
 
         try:
-            date_str, time_str = date_time.split()
-            result_message = add_date(date_str, time_str)
+            date, time = date_time.split()
+            result_message = add_date(date, time)
 
-            if ERROR_MESSAGE in result_message:
+            if not isinstance(result_message, bool):
                 # Отправляем новое сообщение и сохраняем его ID
                 sent_message = await context.bot.send_message(
                     chat_id=chat_id,
                     text=result_message,
                     reply_markup=get_cancel_keyboard(),
                 )
-                context.user_data["last_bot_message_id"] = sent_message.message_id
+                context.user_data["last_bot_message_id"] = (
+                    sent_message.message_id
+                )
                 return
 
             reply_markup = get_buttons_for_user(chat_id)
-            # Отправляем новое сообщение и сохраняем его ID
+
             sent_message = await context.bot.send_message(
                 chat_id=chat_id,
-                text=result_message,
+                text=SUCCESS_MESSAGE,
                 reply_markup=reply_markup,
             )
-            context.user_data["last_bot_message_id"] = sent_message.message_id
+            context.user_data[LAST_BOT_MESSAGE_ID] = sent_message.message_id
             USER_STATES[chat_id] = None
 
         except ValueError:
@@ -212,7 +205,7 @@ async def handle_date_input(update, context) -> None:
                 text=DATE_TIME_FORMAT_ERROR_MESSAGE,
                 reply_markup=get_cancel_keyboard(),
             )
-            context.user_data["last_bot_message_id"] = sent_message.message_id
+            context.user_data[LAST_BOT_MESSAGE_ID] = sent_message.message_id
             return
 
     elif USER_STATES.get(chat_id) == USER_STATE_ADDING_COMMENT:
@@ -225,7 +218,7 @@ async def handle_date_input(update, context) -> None:
             text=SELECT_COMMAND_MESSAGE,
             reply_markup=reply_markup,
         )
-        context.user_data["last_bot_message_id"] = sent_message.message_id
+        context.user_data[LAST_BOT_MESSAGE_ID] = sent_message.message_id
 
 
 async def view_records(update, context) -> None:
@@ -237,27 +230,19 @@ async def view_records(update, context) -> None:
     await update.callback_query.message.delete()
 
     sorted_records = get_filtered_records()
-
-    if not sorted_records.empty:
+    if sorted_records:
         message = RECORDS_HEADER_MESSAGE
-        for index, row in sorted_records.iterrows():
-            record_message = (
-                f"📅  {row[DATE_DATA].strftime(DATE_FORMAT)}  📅    "
-                f"⏰  {row[TIME_DATA]}  ⏰\n"
-            )
-
-            if row[USER_NAME] is not None and not pd.isna(row[USER_NAME]):
-                record_message += f"👤  {row[USER_NAME]: <22}"
-            if row[RECORD_TYPE] is not None and not pd.isna(row[RECORD_TYPE]):
-                record_message += f"🌟  {row[RECORD_TYPE]}\n"
-
-            if row[CONFIRMATION_DATA] == CONFIRMATION_RECEIVED:
-                record_message += f"{CONFIRMED_MESSAGE: >30}\n"
-
-            message += f"{record_message}\n"
+        for items in sorted_records:
+            record = f"📅  {items[0]}  📅    ⏰  {items[1]}  ⏰\n"
+            if all(item is not None for item in items[3: len(items)]):
+                record += (
+                    f"👤  {items[3]: <22}"
+                    f"🌟  {items[6]}\n"
+                    f"  {CONFIRMED_MESSAGE: >30}\n"
+                )
+            message += f"{record}\n"
     else:
         message = NO_RECORDS_MESSAGE
-
     await context.bot.send_message(
         chat_id=chat_id, text=message, reply_markup=reply_markup
     )
@@ -269,19 +254,17 @@ async def view_free_records(update, context) -> None:
     chat_id = update.callback_query.message.chat.id
     reply_markup = get_buttons_for_user(chat_id)
 
-    sorted_records = get_filtered_records()
+    sorted_records = get_available_dates()
     await update.callback_query.message.delete()
 
-    free_records = sorted_records[sorted_records[CONFIRMATION_DATA].isnull()]
-
-    if not free_records.empty:
+    if sorted_records:
         message = FREE_RECORDS_HEADER_MESSAGE
-        for index, row in free_records.iterrows():
-            record_message = (
-                f"📅  {row[DATE_DATA].strftime(DATE_FORMAT)}  "
-                f"📅     ⏰  {row[TIME_DATA]}  ⏰\n"
+        for items in sorted_records:
+            record = (
+                f"📅  {items.split()[0]}  📅    "
+                f"⏰  {items.split()[1]}  ⏰\n"
             )
-            message += f"{record_message}\n"
+            message += f"{record}\n"
     else:
         message = NO_FREE_RECORDS_MESSAGE
 
@@ -384,12 +367,15 @@ async def confirm_booking(update, context) -> None:
     data = query.data.split("|")
     selected_date = data[1]
     user_id = data[2]
-    name = data[3]
+    username = data[3]
     service_type = data[4]
 
-    # reply_markup = get_buttons_for_user(user_id)
-
-    book_date_in_file(selected_date, user_id, name, service_type)
+    book_date_in_file(
+        selected_date=selected_date,
+        user_id=user_id,
+        username=username,
+        service_type=service_type,
+    )
 
     await context.bot.send_message(
         chat_id=user_id,
@@ -420,7 +406,7 @@ async def deny_booking(update, context) -> None:
 async def view_personal_records(update, context) -> None:
     """Обрабатывает запрос пользователя на просмотр своих записей."""
     user_id = update.callback_query.from_user.id
-    records = get_user_records(user_id)
+    records = get_user_records(user_id=user_id)
     reply_markup = get_buttons_for_user(user_id)
     await update.callback_query.message.delete()
 
@@ -475,13 +461,12 @@ async def confirm_cancel_record(update, context) -> None:
     date = data[2]
     time = data[3]
     await update.callback_query.message.delete()
-    update_record(user_id, date, time)
-
+    book_date_in_file(selected_date=(date + " " + time))
     await update.callback_query.answer()
     reply_markup = get_user_buttons()
 
     await context.bot.send_message(
-        chat_id=update.callback_query.message.chat.id,
+        chat_id=user_id,
         text=RECORD_CANCELLED_MESSAGE.format(date=date, time=time),
         reply_markup=reply_markup,
     )
@@ -501,6 +486,7 @@ async def handle_admin_cancel_date(update, context):
     await update.callback_query.message.delete()
 
     upcoming_records = get_upcoming_records()
+
     reply_markup = get_admin_buttons()
     if not upcoming_records:
         await query.message.reply_text(
@@ -533,7 +519,7 @@ async def handle_admin_cancel_record(update, context):
     data = update.callback_query.data.split("|")
     if data[2].startswith("0"):
         data[2] = data[2][1:]
-    update_record(data[3], data[1], data[2])
+    book_date_in_file(selected_date=(data[1] + " " + data[2]))
     USER_STATES[ADMIN_IDS[0]] = None
 
     await context.bot.send_message(
@@ -545,7 +531,7 @@ async def handle_admin_cancel_record(update, context):
     await context.bot.send_message(
         chat_id=int(data[3]),
         text=USER_CANCEL_NOTIFICATION_MESSAGE,
-        reply_markup=get_buttons_for_user(int(data[3])),
+        # reply_markup=get_buttons_for_user(int(data[3])),
     )
 
 
@@ -571,7 +557,7 @@ async def ask_date(update, context):
         text=SEND_REQUEST_MESSAGE,
         reply_markup=get_asking_buttons(),
     )
-    context.user_data['bot_message_id'] = sent_message.message_id
+    context.user_data[LAST_BOT_MESSAGE_ID] = sent_message.message_id
 
     USER_STATES[user_id] = USER_STATE_ADDING_COMMENT
 
@@ -583,12 +569,11 @@ async def handle_comment_input(update, context) -> None:
         await context.bot.delete_message(
             chat_id=update.message.chat.id, message_id=update.message.message_id
         )
-        bot_message_id = context.user_data.get('bot_message_id')
+        bot_message_id = context.user_data.get(LAST_BOT_MESSAGE_ID)
         if bot_message_id:
             try:
                 await context.bot.delete_message(
-                    chat_id=update.message.chat.id,
-                    message_id=bot_message_id
+                    chat_id=update.message.chat.id, message_id=bot_message_id
                 )
             except Exception as e:
                 print(f"Не удалось удалить сообщение бота: {e}")
@@ -662,6 +647,7 @@ async def delete_dates(update, context):
     await query.answer()
     await update.callback_query.message.delete()
     data = update.callback_query.data.split("|")
+
     delete = delete_date(data[1])
     if delete is False:
         await context.bot.send_message(

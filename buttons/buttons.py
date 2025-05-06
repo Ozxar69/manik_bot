@@ -116,11 +116,13 @@ def get_cancel_user_records(records):
                 ),
                 callback_data=f"confirm_cancel_{date}_{time}",
             )
-            for date, time, type in records
-        ],
-        cancel,
+        ]
+        for date, time, type in records
     ]
-    reply_markup = InlineKeyboardMarkup([button for button in buttons])
+
+    buttons.append(cancel)
+
+    reply_markup = InlineKeyboardMarkup(buttons)
 
     return reply_markup
 

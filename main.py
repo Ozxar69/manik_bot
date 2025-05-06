@@ -1,5 +1,5 @@
 import os
-
+import telegram
 from dotenv import load_dotenv
 from telegram.ext import ApplicationBuilder
 
@@ -19,6 +19,8 @@ def main():
         application.run_polling()
     except KeyboardInterrupt:
         print("Бот остановлен пользователем.")
+    except telegram.error.NetworkError as e:
+        print(f"Ошибка соединения {e}")
 
 
 if __name__ == "__main__":

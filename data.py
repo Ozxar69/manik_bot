@@ -173,7 +173,7 @@ SEND_REQUEST_MESSAGE = (
 )
 
 LAST_BOT_MESSAGE_ID = "last_bot_message_id"
-COMMENT = "Вы указали Комментарий -\n{text}\n\n  Теперь жми 'Отправить запрос'⬇️⬇️⬇️⬇️⬇️ "
+COMMENT = "Вы указали Комментарий -\n{text}\n\nТеперь жми 'Отправить запрос' ⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇️⬇ "
 
 # SQL
 DB_PATH = "services/db.sqlite"
@@ -195,14 +195,7 @@ FIND_TABLE = (
 )
 
 SORTED_RECORDS = """
-        SELECT date,
-        time,
-        datetime,
-        username,
-        user_id,
-        confirmation,
-        type
-        FROM clients
-        ORDER BY datetime
-        LIMIT 10;
-        """
+    SELECT date, time, datetime, username, user_id, confirmation, type
+    FROM clients
+    ORDER BY datetime
+"""
